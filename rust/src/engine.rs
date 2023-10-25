@@ -1,9 +1,11 @@
 use shakmaty::{Chess, Move, Position};
 use rand::seq::SliceRandom;
+use output::send_move;
+use crate::output;
 
 pub trait Engine {
-    fn start(&self);
-    fn stop(&mut self) -> Move;
+    fn start(&mut self);
+    fn stop(&mut self);
     fn update(&mut self, mv: Move);
     fn restart(&mut self);
     fn get_status(&self) -> Chess;
@@ -14,16 +16,12 @@ pub struct RandomEngine {
 }
 
 impl Engine for RandomEngine {
-    fn start(&self) {}
+    fn start(&mut self) {
+        send_move(self.next_move())
+    }
 
-    fn stop(&mut self) -> Move {
-        let moves = self.pos
-            .legal_moves();
-        let mv = moves
-            .choose(&mut rand::thread_rng())
-            .unwrap();
-        self.pos.play_unchecked(mv);
-        mv.clone()
+    fn stop(&mut self) {
+        send_move(self.next_move())
     }
 
     fn update(&mut self, mv: Move) {
@@ -36,5 +34,17 @@ impl Engine for RandomEngine {
 
     fn get_status(&self) -> Chess {
         self.pos.clone()
+    }
+}
+
+impl RandomEngine {
+    fn next_move(&mut self) -> Move {
+        let moves = self.pos
+            .legal_moves();
+        let mv = moves
+            .choose(&mut rand::thread_rng())
+            .unwrap();
+        self.pos.play_unchecked(mv);
+        mv.clone()
     }
 }

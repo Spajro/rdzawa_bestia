@@ -1,6 +1,6 @@
 use std::ops::Add;
 use std::str::FromStr;
-use shakmaty::CastlingMode;
+use shakmaty::{CastlingMode, Move};
 use shakmaty::uci::Uci;
 use crate::engine::Engine;
 
@@ -36,10 +36,15 @@ fn go(engine: &mut dyn Engine) -> Option<String> {
 }
 
 fn stop(engine: &mut dyn Engine) -> Option<String> {
-    return Some(String::from("bestmove ").add(engine.stop().to_uci(CastlingMode::Standard).to_string().as_str()));
+    engine.stop();
+    None
 }
 
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
     engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
     None
+}
+
+pub fn move_to_uci(mv: Move) -> String {
+    String::from("bestmove ").add(mv.to_uci(CastlingMode::Standard).to_string().as_str())
 }

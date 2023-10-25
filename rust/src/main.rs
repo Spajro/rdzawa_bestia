@@ -1,9 +1,11 @@
 use std::io;
 use shakmaty::Chess;
 use crate::engine::RandomEngine;
+use crate::output::send;
 
 mod engine;
 mod uci;
+mod output;
 
 fn main() {
     let mut input = String::new();
@@ -21,7 +23,7 @@ fn main() {
         }
         let result = uci::handle_uci(&input, &mut engine);
         if result.is_some() {
-            println!("{}", result.unwrap());
+            send(result.unwrap())
         }
         input.clear()
     }
