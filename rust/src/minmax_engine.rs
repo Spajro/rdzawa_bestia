@@ -1,19 +1,13 @@
 use shakmaty::{Chess, Move, Position, MoveList};
 use output::send_move;
+use crate::engine::Engine;
+use crate::evaluation::eval;
 use crate::output;
 
 struct Result {
     score: f32,
     chosen_move: Option<Move>,
     computed: bool,
-}
-
-pub trait Engine {
-    fn start(&mut self);
-    fn stop(&mut self);
-    fn update(&mut self, mv: Move);
-    fn restart(&mut self);
-    fn get_status(&self) -> Chess;
 }
 
 pub struct MinMaxEngine {
@@ -43,16 +37,12 @@ impl Engine for MinMaxEngine {
 }
 
 impl MinMaxEngine {
-    fn eval(&self) -> f32 {
-        0.00
-    }
-
     fn negamax(&self, pos: Chess, depth: i32, mut alpha: f32, beta: f32) -> Result {
 
         // TODO: check timeout
 
         if pos.outcome().is_some() || depth == 0 {
-            return Result{score: self.eval(), chosen_move: None, computed: true};
+            return Result { score: eval(&self.pos), chosen_move: None, computed: true };
         }
 
         let legal_moves: MoveList = pos.legal_moves();
@@ -61,15 +51,15 @@ impl MinMaxEngine {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
-            let mut result: Result = self.negamax(new_pos, depth-1, -beta, -alpha);
+            let mut result: Result = self.negamax(new_pos, depth - 1, -beta, -alpha);
             result.score = -result.score;
 
             if result.computed == false {
-                return Result {score: alpha, chosen_move: Some(best_move), computed: false};
+                return Result { score: alpha, chosen_move: Some(best_move), computed: false };
             }
 
             if result.score >= beta {
-                return Result {score: alpha, chosen_move: Some(best_move), computed: true};
+                return Result { score: alpha, chosen_move: Some(best_move), computed: true };
             }
 
             if result.score > alpha {
@@ -78,7 +68,7 @@ impl MinMaxEngine {
             }
         }
 
-        return Result{score: alpha, chosen_move: Some(best_move), computed: true};
+        return Result { score: alpha, chosen_move: Some(best_move), computed: true };
     }
 
     fn find_best_move(&mut self) -> Move {
@@ -86,7 +76,7 @@ impl MinMaxEngine {
         let max_depth = 30;
 
         // let mut best_score = -1e9;
-        let mut best_move:Option <Move> = None;
+        let mut best_move: Option<Move> = None;
 
         while depth <= max_depth {
             let result = self.negamax(self.pos.clone(), depth, -1000000000.0, 1000000000.0);
@@ -98,8 +88,8 @@ impl MinMaxEngine {
             // best_score = result.score;
             depth += 1;
         }
-        
-        self.pos.play_unchecked(&best_move.unwrap());
-        best_move.unwrap().clone()
+        let chosen = best_move.unwrap();
+        self.pos.play_unchecked(&chosen);
+        chosen.clone()
     }
 }

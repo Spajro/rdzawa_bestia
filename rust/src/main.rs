@@ -1,15 +1,18 @@
 use std::io;
 use shakmaty::Chess;
-use crate::engine::RandomEngine;
+use crate::minmax_engine::MinMaxEngine;
 use crate::output::send;
 
 mod engine;
 mod uci;
 mod output;
+mod minmax_engine;
+mod evaluation;
+mod time_management;
 
 fn main() {
     let mut input = String::new();
-    let mut engine = RandomEngine {
+    let mut engine = MinMaxEngine {
         pos: Chess::default()
     };
     let stdin = io::stdin();
