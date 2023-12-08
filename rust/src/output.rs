@@ -9,3 +9,7 @@ pub fn send(string: String) {
 pub fn send_move(mv: Move) {
     send(move_to_uci(mv));
 }
+
+pub fn send_info(info: String) {
+    send(String::from("info ") + &*info)
+}

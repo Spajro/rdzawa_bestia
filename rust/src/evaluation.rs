@@ -2,6 +2,17 @@ use shakmaty::{Chess, Position};
 
 pub fn eval(chess: &Chess) -> f32 {
     let board = chess.board();
+    if chess.is_game_over() {
+        return if chess.is_checkmate() {
+            if chess.turn().is_white() {
+                -1e9
+            } else {
+                1e9
+            }
+        } else {
+            0.0
+        };
+    }
     let white_value = board.white().intersect(board.pawns()).count() +
         3 * board.white().intersect(board.knights()).count() +
         3 * board.white().intersect(board.bishops()).count() +
@@ -12,7 +23,7 @@ pub fn eval(chess: &Chess) -> f32 {
         3 * board.black().intersect(board.bishops()).count() +
         5 * board.black().intersect(board.rooks()).count() +
         9 * board.black().intersect(board.queens()).count();
-    (white_value - black_value) as f32
+    (white_value as i32 - black_value as i32) as f32
 }
 
 

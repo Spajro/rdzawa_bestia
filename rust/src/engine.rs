@@ -4,7 +4,7 @@ use output::send_move;
 use crate::output;
 
 pub trait Engine {
-    fn start(&mut self);
+    fn start(&mut self, time: u64);
     fn stop(&mut self);
     fn update(&mut self, mv: Move);
     fn restart(&mut self);
@@ -16,7 +16,7 @@ pub struct RandomEngine {
 }
 
 impl Engine for RandomEngine {
-    fn start(&mut self) {
+    fn start(&mut self, time: u64) {
         send_move(self.next_move())
     }
 
