@@ -116,9 +116,9 @@ pub fn eval(chess: &Chess) -> f32 {
     if chess.is_game_over() {
         return if chess.is_checkmate() {
             if chess.turn().is_white() {
-                -1e9
+                -1e9 + chess.fullmoves().get() as f32
             } else {
-                1e9
+                1e9 - chess.fullmoves().get() as f32
             }
         } else {
             0.0
