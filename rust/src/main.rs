@@ -12,9 +12,7 @@ mod time_management;
 
 fn main() {
     let mut input = String::new();
-    let mut engine = MinMaxEngine {
-        pos: Chess::default()
-    };
+    let mut engine = MinMaxEngine::new(Chess::default());
     let stdin = io::stdin();
     loop {
         stdin.read_line(&mut input).expect("panic message");

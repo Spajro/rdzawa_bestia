@@ -16,7 +16,7 @@ pub struct RandomEngine {
 }
 
 impl Engine for RandomEngine {
-    fn start(&mut self, time: u64) {
+    fn start(&mut self, _time: u64) {
         send_move(self.next_move())
     }
 
