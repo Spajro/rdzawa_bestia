@@ -1,6 +1,6 @@
 use crate::engine::Engine;
 use crate::evaluation::eval;
-use crate::output;
+use crate::output::{self, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
 use output::send_move;
@@ -15,12 +15,18 @@ struct Result {
 }
 
 #[derive(Clone)]
-struct KillerMoves<const MAX_SIZE: usize> {
+pub struct KillerMoves<const MAX_SIZE: usize> {
     moves: ArrayVec<Move, MAX_SIZE>,
     size: usize,
 }
 
 impl<const MAX_SIZE: usize> KillerMoves<MAX_SIZE> {
+    pub fn new(&mut self) -> Self {
+        KillerMoves::<MAX_SIZE> {
+            moves: ArrayVec::new(),
+            size: 0,
+        }
+    }
     pub fn add(&mut self, mv: Move) {
         self.moves.rotate_right(1);
         self.size = std::cmp::min(self.size + 1, MAX_SIZE);
@@ -30,7 +36,7 @@ impl<const MAX_SIZE: usize> KillerMoves<MAX_SIZE> {
 
 pub struct MinMaxEngine {
     pub pos: Chess,
-    killer_moves: ArrayVec<KillerMoves<2>, { Self::MAX_DEPTH }>,
+    pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
 }
 
 impl Engine for MinMaxEngine {
@@ -57,10 +63,11 @@ impl Engine for MinMaxEngine {
 
 impl MinMaxEngine {
     const MAX_DEPTH: usize = 30;
+    const KILLER_MOVES_SIZE: usize = 2;
     pub fn new(pos: Chess) -> Self {
         MinMaxEngine {
             pos: pos,
-            killer_moves: ArrayVec::new(),
+            killer_moves: ArrayVec::<_, { Self::MAX_DEPTH }>::new(),
         }
     }
     fn negamax(
@@ -91,13 +98,17 @@ impl MinMaxEngine {
                 computed: true,
             };
         }
-
         let legal_moves: MoveList = pos.legal_moves();
+
         let mut best_move: Move = legal_moves[0].clone();
 
-        for i in 0..2 {
-            let next_move = self.killer_moves[depth].moves[i].clone();
+        send_info("before killer moves".to_string());
 
+        let km_size = self.killer_moves.len();
+        send_info("size: ".to_string() + &km_size.to_string());
+        for i in 0..km_size {
+            send_info("killer_moves".to_string() + &i.to_string());
+            let next_move = self.killer_moves[depth].moves[i].clone();
             if pos.is_legal(&next_move) {
                 let mut new_pos = pos.clone();
                 new_pos.play_unchecked(&next_move);
@@ -127,7 +138,7 @@ impl MinMaxEngine {
                 }
             }
         }
-
+        send_info("after_killer_moves".to_string());
         for next_move in legal_moves {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);

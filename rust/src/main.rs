@@ -1,14 +1,14 @@
-use std::io;
-use shakmaty::Chess;
 use crate::minmax_engine::MinMaxEngine;
 use crate::output::send;
+use shakmaty::Chess;
+use std::io;
 
 mod engine;
-mod uci;
-mod output;
-mod minmax_engine;
 mod evaluation;
+mod minmax_engine;
+mod output;
 mod time_management;
+mod uci;
 
 fn main() {
     let mut input = String::new();
