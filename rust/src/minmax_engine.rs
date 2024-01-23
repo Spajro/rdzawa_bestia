@@ -1,6 +1,6 @@
 use crate::engine::Engine;
 use crate::evaluation::eval;
-use crate::output::{self, send_info};
+use crate::output::{self, send, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
 use output::send_move;
@@ -21,9 +21,17 @@ pub struct KillerMoves<const MAX_SIZE: usize> {
 }
 
 impl<const MAX_SIZE: usize> KillerMoves<MAX_SIZE> {
-    pub fn new(&mut self) -> Self {
+    pub fn new() -> Self {
+        let mut moves = ArrayVec::<_, { MAX_SIZE }>::new();
+        for _ in 0..MAX_SIZE {
+            // TODO jakoś ładniej to zrobić:
+            moves.push(Move::Put {
+                role: shakmaty::Role::Pawn,
+                to: shakmaty::Square::E5,
+            });
+        }
         KillerMoves::<MAX_SIZE> {
-            moves: ArrayVec::new(),
+            moves: moves,
             size: 0,
         }
     }
@@ -65,9 +73,13 @@ impl MinMaxEngine {
     const MAX_DEPTH: usize = 30;
     const KILLER_MOVES_SIZE: usize = 2;
     pub fn new(pos: Chess) -> Self {
+        let mut km = ArrayVec::<_, { Self::MAX_DEPTH }>::new();
+        for _ in 0..Self::MAX_DEPTH {
+            km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
+        }
         MinMaxEngine {
             pos: pos,
-            killer_moves: ArrayVec::<_, { Self::MAX_DEPTH }>::new(),
+            killer_moves: km,
         }
     }
     fn negamax(
@@ -88,9 +100,9 @@ impl MinMaxEngine {
 
         if pos.outcome().is_some() || depth == 0 {
             let evl = if pos.turn().is_white() {
-                eval(&pos)
+                eval(&pos, false)
             } else {
-                -eval(&pos)
+                -eval(&pos, false)
             };
             return Result {
                 score: evl,
@@ -102,12 +114,11 @@ impl MinMaxEngine {
 
         let mut best_move: Move = legal_moves[0].clone();
 
-        send_info("before killer moves".to_string());
-
-        let km_size = self.killer_moves.len();
-        send_info("size: ".to_string() + &km_size.to_string());
+        let km_size = self.killer_moves[depth].size;
         for i in 0..km_size {
-            send_info("killer_moves".to_string() + &i.to_string());
+            // if i > 0 {
+            //     send_info("killer_moves".to_string() + &i.to_string());
+            // }
             let next_move = self.killer_moves[depth].moves[i].clone();
             if pos.is_legal(&next_move) {
                 let mut new_pos = pos.clone();
@@ -134,11 +145,10 @@ impl MinMaxEngine {
                 if result.score > alpha {
                     alpha = result.score;
                     best_move = next_move.clone();
-                    self.killer_moves[depth].add(next_move.clone());
                 }
             }
         }
-        send_info("after_killer_moves".to_string());
+
         for next_move in legal_moves {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
@@ -163,7 +173,9 @@ impl MinMaxEngine {
 
             if result.score > alpha {
                 alpha = result.score;
-                best_move = next_move;
+                best_move = next_move.clone();
+
+                self.killer_moves[depth].add(next_move);
             }
         }
 
@@ -201,6 +213,7 @@ impl MinMaxEngine {
         output::send_info(String::from("Final depth:") + &*depth.to_string());
         let chosen = best_move.unwrap();
         self.pos.play_unchecked(&chosen);
+        eval(&self.pos, true);
         chosen.clone()
     }
 }
