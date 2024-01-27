@@ -4,7 +4,7 @@ use crate::output::{self, send, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
 use output::send_move;
-use shakmaty::{Chess, Move, MoveList, Position};
+use shakmaty::{Chess, Move, MoveList, Position, Role};
 use std::ops::Add;
 use std::time::{Duration, Instant};
 
@@ -113,11 +113,9 @@ impl MinMaxEngine {
             };
         }
 
-        let is_check = pos.is_check();
-
         let mut legal_moves: MoveList = pos.legal_moves();
 
-        if !is_check {
+        if !pos.is_check() {
             legal_moves = legal_moves
                 .into_iter()
                 .filter(|mv| mv.is_capture())
@@ -137,13 +135,29 @@ impl MinMaxEngine {
             };
         }
 
+        let mut move_ordering: Vec<(i16, &Move)> = legal_moves
+            .iter()
+            .map(|mv| {
+                let role = mv.role();
+                match role {
+                    Role::Pawn => return (1, mv),
+                    Role::Knight => return (3, mv),
+                    Role::Bishop => return (4, mv),
+                    Role::Rook => return (5, mv),
+                    Role::Queen => return (9, mv),
+                    Role::King => return (10, mv),
+                }
+            })
+            .collect::<Vec<(i16, &Move)>>();
+
+        move_ordering.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
         let mut best_move: Move = legal_moves[0].clone();
-        for next_move in legal_moves {
+        for (_score, next_move) in move_ordering {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
-            let mut result: Result =
-                self.quiescence(new_pos, qdepth-1, -beta, -alpha, end_time);
+            let mut result: Result = self.quiescence(new_pos, qdepth - 1, -beta, -alpha, end_time);
             result.score = -result.score;
             if result.computed == false {
                 return Result {
@@ -210,13 +224,15 @@ impl MinMaxEngine {
 
         let legal_moves: MoveList = pos.legal_moves();
 
+        let km_value = 1e6;
+        let km_size: f32 = Self::KILLER_MOVES_SIZE as f32;
         // move ordering (killer moves first)
         let mut move_ordering: Vec<(f32, &Move)> = legal_moves
             .iter()
             .map(|mv| {
                 for i in 0..self.killer_moves[depth].size {
                     if mv == &self.killer_moves[depth].moves[i] {
-                        return (1e6 - i as f32, mv);
+                        return (km_value + km_size - i as f32, mv);
                     }
                 }
                 (0.0, mv)
@@ -225,16 +241,18 @@ impl MinMaxEngine {
 
         // reverse sort
         move_ordering.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-        
+
         let mut best_move: Move = legal_moves[0].clone();
-        
-        for (_score, next_move) in move_ordering {
+
+        // send_info("len: ".to_string() + move_ordering.len().to_string().as_str());
+        for (value, next_move) in move_ordering {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
             let mut result: Result =
                 self.negamax(new_pos, depth - 1, qdepth, -beta, -alpha, end_time);
             result.score = -result.score;
+
             if result.computed == false {
                 return Result {
                     score: alpha,
@@ -255,7 +273,9 @@ impl MinMaxEngine {
                 alpha = result.score;
                 best_move = next_move.clone();
 
-                self.killer_moves[depth].add(next_move.clone());
+                if value < km_value {
+                    self.killer_moves[depth].add(next_move.clone());
+                }
             }
         }
 
@@ -277,7 +297,7 @@ impl MinMaxEngine {
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
-                2*depth,
+                2*depth+(depth%2),
                 -1000000000.0,
                 1000000000.0,
                 end_time,
