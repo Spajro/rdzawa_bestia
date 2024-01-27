@@ -82,10 +82,12 @@ impl MinMaxEngine {
             killer_moves: km,
         }
     }
+
     fn negamax(
         &mut self,
         pos: Chess,
         depth: usize,
+        qdepth: usize,
         mut alpha: f32,
         beta: f32,
         end_time: Instant,
@@ -112,48 +114,30 @@ impl MinMaxEngine {
         }
         let legal_moves: MoveList = pos.legal_moves();
 
+        // move ordering (killer moves first)
+        let mut move_ordering: Vec<(f32, &Move)> = legal_moves
+            .iter()
+            .map(|mv| {
+                for i in 0..self.killer_moves[depth].size {
+                    if mv == &self.killer_moves[depth].moves[i] {
+                        return (1e9 - i as f32, mv);
+                    }
+                }
+                (0.0, mv)
+            })
+            .collect::<Vec<(f32, &Move)>>();
+        
+        // reverse sort
+        move_ordering.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+
         let mut best_move: Move = legal_moves[0].clone();
 
-        let km_size = self.killer_moves[depth].size;
-        for i in 0..km_size {
-            // if i > 0 {
-            //     send_info("killer_moves".to_string() + &i.to_string());
-            // }
-            let next_move = self.killer_moves[depth].moves[i].clone();
-            if pos.is_legal(&next_move) {
-                let mut new_pos = pos.clone();
-                new_pos.play_unchecked(&next_move);
-
-                let result = &mut self.negamax(new_pos, depth - 1, -beta, -alpha, end_time);
-                result.score = -result.score;
-                if result.computed == false {
-                    return Result {
-                        score: alpha,
-                        chosen_move: Some(best_move),
-                        computed: false,
-                    };
-                }
-
-                if result.score >= beta {
-                    return Result {
-                        score: beta,
-                        chosen_move: Some(best_move),
-                        computed: true,
-                    };
-                }
-
-                if result.score > alpha {
-                    alpha = result.score;
-                    best_move = next_move.clone();
-                }
-            }
-        }
-
-        for next_move in legal_moves {
+        for (_, next_move) in move_ordering {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
-            let mut result: Result = self.negamax(new_pos, depth - 1, -beta, -alpha, end_time);
+            let mut result: Result =
+                self.negamax(new_pos, depth - 1, qdepth, -beta, -alpha, end_time);
             result.score = -result.score;
             if result.computed == false {
                 return Result {
@@ -175,7 +159,7 @@ impl MinMaxEngine {
                 alpha = result.score;
                 best_move = next_move.clone();
 
-                self.killer_moves[depth].add(next_move);
+                self.killer_moves[depth].add(next_move.clone());
             }
         }
 
@@ -196,6 +180,7 @@ impl MinMaxEngine {
             output::send_info(String::from("Depth:") + &*depth.to_string());
             let result = self.negamax(
                 self.pos.clone(),
+                depth,
                 depth,
                 -1000000000.0,
                 1000000000.0,
