@@ -297,7 +297,7 @@ impl MinMaxEngine {
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
-                2*depth+(depth%2),
+                depth+2,
                 -1000000000.0,
                 1000000000.0,
                 end_time,
