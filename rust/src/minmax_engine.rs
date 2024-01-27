@@ -83,6 +83,97 @@ impl MinMaxEngine {
         }
     }
 
+    fn quiescence(
+        &mut self,
+        pos: Chess,
+        qdepth: usize,
+        mut alpha: f32,
+        beta: f32,
+        end_time: Instant,
+    ) -> Result {
+        if end_time <= Instant::now() {
+            return Result {
+                score: alpha,
+                chosen_move: None,
+
+                computed: false,
+            };
+        }
+
+        if pos.outcome().is_some() || qdepth == 0 {
+            let evl = if pos.turn().is_white() {
+                eval(&pos, false)
+            } else {
+                -eval(&pos, false)
+            };
+            return Result {
+                score: evl,
+                chosen_move: None,
+                computed: true,
+            };
+        }
+
+        let is_check = pos.is_check();
+
+        let mut legal_moves: MoveList = pos.legal_moves();
+
+        if !is_check {
+            legal_moves = legal_moves
+                .into_iter()
+                .filter(|mv| mv.is_capture())
+                .collect::<ArrayVec<Move, 256>>();
+        }
+
+        if legal_moves.is_empty() {
+            let evl = if pos.turn().is_white() {
+                eval(&pos, false)
+            } else {
+                -eval(&pos, false)
+            };
+            return Result {
+                score: evl,
+                chosen_move: None,
+                computed: true,
+            };
+        }
+
+        let mut best_move: Move = legal_moves[0].clone();
+        for next_move in legal_moves {
+            let mut new_pos = pos.clone();
+            new_pos.play_unchecked(&next_move);
+
+            let mut result: Result =
+                self.quiescence(new_pos, qdepth-1, -beta, -alpha, end_time);
+            result.score = -result.score;
+            if result.computed == false {
+                return Result {
+                    score: alpha,
+                    chosen_move: Some(best_move),
+                    computed: false,
+                };
+            }
+
+            if result.score >= beta {
+                return Result {
+                    score: beta,
+                    chosen_move: Some(best_move),
+                    computed: true,
+                };
+            }
+
+            if result.score > alpha {
+                alpha = result.score;
+                best_move = next_move.clone();
+            }
+        }
+
+        return Result {
+            score: alpha,
+            chosen_move: Some(best_move),
+            computed: true,
+        };
+    }
+
     fn negamax(
         &mut self,
         pos: Chess,
@@ -100,7 +191,7 @@ impl MinMaxEngine {
             };
         }
 
-        if pos.outcome().is_some() || depth == 0 {
+        if pos.outcome().is_some() {
             let evl = if pos.turn().is_white() {
                 eval(&pos, false)
             } else {
@@ -112,6 +203,11 @@ impl MinMaxEngine {
                 computed: true,
             };
         }
+
+        if depth == 0 {
+            return self.quiescence(pos, qdepth, alpha, beta, end_time);
+        }
+
         let legal_moves: MoveList = pos.legal_moves();
 
         // move ordering (killer moves first)
@@ -120,19 +216,19 @@ impl MinMaxEngine {
             .map(|mv| {
                 for i in 0..self.killer_moves[depth].size {
                     if mv == &self.killer_moves[depth].moves[i] {
-                        return (1e9 - i as f32, mv);
+                        return (1e6 - i as f32, mv);
                     }
                 }
                 (0.0, mv)
             })
             .collect::<Vec<(f32, &Move)>>();
-        
+
         // reverse sort
         move_ordering.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-
+        
         let mut best_move: Move = legal_moves[0].clone();
-
-        for (_, next_move) in move_ordering {
+        
+        for (_score, next_move) in move_ordering {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
@@ -181,7 +277,7 @@ impl MinMaxEngine {
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
-                depth,
+                2*depth,
                 -1000000000.0,
                 1000000000.0,
                 end_time,
