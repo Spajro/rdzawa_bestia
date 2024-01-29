@@ -45,6 +45,7 @@ impl<const MAX_SIZE: usize> KillerMoves<MAX_SIZE> {
 pub struct MinMaxEngine {
     pub pos: Chess,
     pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
+    pub evaluations_cnt: i32,
 }
 
 impl Engine for MinMaxEngine {
@@ -80,6 +81,7 @@ impl MinMaxEngine {
         MinMaxEngine {
             pos: pos,
             killer_moves: km,
+            evaluations_cnt: 0,
         }
     }
 
@@ -91,16 +93,23 @@ impl MinMaxEngine {
         beta: f32,
         end_time: Instant,
     ) -> Result {
-        if end_time <= Instant::now() {
+        if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
             return Result {
                 score: alpha,
                 chosen_move: None,
-
                 computed: false,
             };
         }
 
-        if pos.outcome().is_some() || qdepth == 0 {
+        let mut legal_moves: MoveList = pos.legal_moves();
+        
+        // if pos.outcome().is_some() || qdepth == 0 {
+        if pos.is_variant_end()
+            || legal_moves.is_empty()
+            || pos.is_insufficient_material()
+            || qdepth == 0
+        {
+            self.evaluations_cnt += 1;
             let evl = if pos.turn().is_white() {
                 eval(&pos, false)
             } else {
@@ -112,30 +121,28 @@ impl MinMaxEngine {
                 computed: true,
             };
         }
-
-        let mut legal_moves: MoveList = pos.legal_moves();
 
         if !pos.is_check() {
             legal_moves = legal_moves
                 .into_iter()
                 .filter(|mv| mv.is_capture())
                 .collect::<ArrayVec<Move, 256>>();
+            if legal_moves.is_empty() {
+                self.evaluations_cnt += 1;
+                let evl = if pos.turn().is_white() {
+                    eval(&pos, false)
+                } else {
+                    -eval(&pos, false)
+                };
+                return Result {
+                    score: evl,
+                    chosen_move: None,
+                    computed: true,
+                };
+            }
         }
 
-        if legal_moves.is_empty() {
-            let evl = if pos.turn().is_white() {
-                eval(&pos, false)
-            } else {
-                -eval(&pos, false)
-            };
-            return Result {
-                score: evl,
-                chosen_move: None,
-                computed: true,
-            };
-        }
-
-        let mut move_ordering: Vec<(i16, &Move)> = legal_moves
+        let mut move_order: Vec<(i16, &Move)> = legal_moves
             .iter()
             .map(|mv| {
                 let role = mv.role();
@@ -150,10 +157,10 @@ impl MinMaxEngine {
             })
             .collect::<Vec<(i16, &Move)>>();
 
-        move_ordering.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+        move_order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
-        let mut best_move: Move = legal_moves[0].clone();
-        for (_score, next_move) in move_ordering {
+        let mut best_move: Move = move_order[0].1.clone();
+        for (_, next_move) in move_order {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
@@ -197,7 +204,7 @@ impl MinMaxEngine {
         beta: f32,
         end_time: Instant,
     ) -> Result {
-        if end_time <= Instant::now() {
+        if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
             return Result {
                 score: alpha,
                 chosen_move: None,
@@ -205,7 +212,10 @@ impl MinMaxEngine {
             };
         }
 
-        if pos.outcome().is_some() {
+        let legal_moves: MoveList = pos.legal_moves();
+        // if pos.outcome().is_some() || qdepth == 0 {
+        if pos.is_variant_end() || legal_moves.is_empty() || pos.is_insufficient_material() {
+            self.evaluations_cnt += 1;
             let evl = if pos.turn().is_white() {
                 eval(&pos, false)
             } else {
@@ -222,17 +232,15 @@ impl MinMaxEngine {
             return self.quiescence(pos, qdepth, alpha, beta, end_time);
         }
 
-        let legal_moves: MoveList = pos.legal_moves();
-
-        let km_value = 1e6;
+        let km_min_value = 1e6;
         let km_size: f32 = Self::KILLER_MOVES_SIZE as f32;
         // move ordering (killer moves first)
-        let mut move_ordering: Vec<(f32, &Move)> = legal_moves
+        let mut move_order: Vec<(f32, &Move)> = legal_moves
             .iter()
             .map(|mv| {
                 for i in 0..self.killer_moves[depth].size {
                     if mv == &self.killer_moves[depth].moves[i] {
-                        return (km_value + km_size - i as f32, mv);
+                        return (km_min_value + km_size - i as f32, mv);
                     }
                 }
                 (0.0, mv)
@@ -240,12 +248,12 @@ impl MinMaxEngine {
             .collect::<Vec<(f32, &Move)>>();
 
         // reverse sort
-        move_ordering.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        move_order.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
         let mut best_move: Move = legal_moves[0].clone();
 
         // send_info("len: ".to_string() + move_ordering.len().to_string().as_str());
-        for (value, next_move) in move_ordering {
+        for (value, next_move) in move_order {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
@@ -273,7 +281,7 @@ impl MinMaxEngine {
                 alpha = result.score;
                 best_move = next_move.clone();
 
-                if value < km_value {
+                if value < km_min_value {
                     self.killer_moves[depth].add(next_move.clone());
                 }
             }
@@ -297,7 +305,7 @@ impl MinMaxEngine {
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
-                depth+2,
+                depth,
                 -1000000000.0,
                 1000000000.0,
                 end_time,
@@ -316,5 +324,21 @@ impl MinMaxEngine {
         self.pos.play_unchecked(&chosen);
         eval(&self.pos, true);
         chosen.clone()
+    }
+}
+
+// cargo flamegraph --unit-test -- mod_minmax_tests::minmax_depth8_inital_position
+#[cfg(test)]
+mod mod_minmax_tests {
+    use super::*;
+
+    #[test]
+    fn minmax_depth8_inital_position() {
+        let mut engine = MinMaxEngine::new(Chess::default());
+        let end_time = Instant::now().add(Duration::from_secs(60 * 10));
+        let depth = 8;
+        let result = engine.negamax(Chess::default(), depth, 2, -1e9, 1e9, end_time);
+        send_info(String::from("Score ") + &*result.score.to_string());
+        println!("Evaluation_cnt={}", engine.evaluations_cnt);
     }
 }

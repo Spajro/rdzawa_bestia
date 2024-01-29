@@ -121,7 +121,9 @@ pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
 
 pub fn eval(chess: &Chess, debug: bool) -> f32 {
     let board = chess.board();
+    // TODO: eval spends 99% time on calculating legal moves! Make new function for checking is_game_over 
     if chess.is_game_over() {
+        // TODO: this also XD
         return if chess.is_checkmate() {
             if chess.turn().is_white() {
                 // send_info("white:".to_string() + chess.fullmoves().get().to_string().as_str());
