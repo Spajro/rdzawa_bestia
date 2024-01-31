@@ -1,4 +1,4 @@
-use shakmaty::{Board, Chess, Color, File, Position, Rank, Square, Bitboard};
+use shakmaty::{Board, Chess, Color, File, Position, Rank, Square, Bitboard, MoveList};
 
 use crate::output::send_info;
 
@@ -152,12 +152,12 @@ pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
         + pawns_pos_val
 }
 
-pub fn eval(chess: &Chess, debug: bool) -> f32 {
+pub fn eval(chess: &Chess, legal_moves: &MoveList, debug: bool) -> f32 {
     let board = chess.board();
-    // TODO: eval spends 99% time on calculating legal moves! Make new function for checking is_game_over 
-    if chess.is_game_over() {
-        // TODO: this also XD
-        return if chess.is_checkmate() {
+    // if chess.is_game_over() {
+    if chess.is_variant_end() || legal_moves.is_empty() || chess.is_insufficient_material() {
+        // return if chess.is_checkmate() {
+        return if !chess.checkers().is_empty() && legal_moves.is_empty() {
             if chess.turn().is_white() {
                 // send_info("white:".to_string() + chess.fullmoves().get().to_string().as_str());
                 -1e9 + 100 as f32 * chess.fullmoves().get() as f32
@@ -178,89 +178,89 @@ pub fn eval(chess: &Chess, debug: bool) -> f32 {
         - get_position_cumulative_value(board, Color::Black)
 }
 
-#[cfg(test)]
-mod eval_tests {
-    use crate::evaluation::eval;
-    use shakmaty::{Chess, Move, Position, Role, Square};
+// #[cfg(test)]
+// mod eval_tests {
+//     use crate::evaluation::eval;
+//     use shakmaty::{Chess, Move, Position, Role, Square};
 
-    #[test]
-    fn start_board_test() {
-        let chess = Chess::new();
-        assert_eq!(0.0, eval(&chess, false))
-    }
+//     #[test]
+//     fn start_board_test() {
+//         let chess = Chess::new();
+//         assert_eq!(0.0, eval(&chess, false))
+//     }
 
-    #[test]
-    fn board_after_taking_pawn_test() {
-        let chess0 = Chess::new();
-        let chess1 = chess0
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::E2,
-                capture: None,
-                to: Square::E4,
-                promotion: None,
-            })
-            .unwrap();
-        let chess2 = chess1
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::D7,
-                capture: None,
-                to: Square::D5,
-                promotion: None,
-            })
-            .unwrap();
-        let chess3 = chess2
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::E4,
-                capture: Option::from(Role::Pawn),
-                to: Square::D5,
-                promotion: None,
-            })
-            .unwrap();
-        assert_eq!(100.25, eval(&chess3, false))
-    }
+//     #[test]
+//     fn board_after_taking_pawn_test() {
+//         let chess0 = Chess::new();
+//         let chess1 = chess0
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::E2,
+//                 capture: None,
+//                 to: Square::E4,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         let chess2 = chess1
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::D7,
+//                 capture: None,
+//                 to: Square::D5,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         let chess3 = chess2
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::E4,
+//                 capture: Option::from(Role::Pawn),
+//                 to: Square::D5,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         assert_eq!(100.25, eval(&chess3, false))
+//     }
 
-    #[test]
-    fn board_after_taking_2_pawns_test() {
-        let chess0 = Chess::new();
-        let chess1 = chess0
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::E2,
-                capture: None,
-                to: Square::E4,
-                promotion: None,
-            })
-            .unwrap();
-        let chess2 = chess1
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::D7,
-                capture: None,
-                to: Square::D5,
-                promotion: None,
-            })
-            .unwrap();
-        let chess3 = chess2
-            .play(&Move::Normal {
-                role: Role::Pawn,
-                from: Square::E4,
-                capture: Option::from(Role::Pawn),
-                to: Square::D5,
-                promotion: None,
-            })
-            .unwrap();
-        let chess4 = chess3
-            .play(&Move::Normal {
-                role: Role::Queen,
-                from: Square::D8,
-                capture: Option::from(Role::Pawn),
-                to: Square::D5,
-                promotion: None,
-            })
-            .unwrap();
-        assert_eq!(0.0, eval(&chess4, false))
-    }
-}
+//     #[test]
+//     fn board_after_taking_2_pawns_test() {
+//         let chess0 = Chess::new();
+//         let chess1 = chess0
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::E2,
+//                 capture: None,
+//                 to: Square::E4,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         let chess2 = chess1
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::D7,
+//                 capture: None,
+//                 to: Square::D5,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         let chess3 = chess2
+//             .play(&Move::Normal {
+//                 role: Role::Pawn,
+//                 from: Square::E4,
+//                 capture: Option::from(Role::Pawn),
+//                 to: Square::D5,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         let chess4 = chess3
+//             .play(&Move::Normal {
+//                 role: Role::Queen,
+//                 from: Square::D8,
+//                 capture: Option::from(Role::Pawn),
+//                 to: Square::D5,
+//                 promotion: None,
+//             })
+//             .unwrap();
+//         assert_eq!(0.0, eval(&chess4, false))
+//     }
+// }

@@ -104,17 +104,17 @@ impl MinMaxEngine {
         let mut legal_moves: MoveList = pos.legal_moves();
         self.evaluations_cnt += 1;
         let stand_pat = if pos.turn().is_white() {
-            eval(&pos, false)
+            eval(&pos, &legal_moves, false)
         } else {
-            -eval(&pos, false)
+            -eval(&pos, &legal_moves, false)
         };
-        
+
         if stand_pat >= beta {
             return Result {
                 score: stand_pat,
                 chosen_move: None,
                 computed: true,
-            };  
+            };
         }
 
         if alpha < stand_pat {
@@ -223,9 +223,9 @@ impl MinMaxEngine {
         if pos.is_variant_end() || legal_moves.is_empty() || pos.is_insufficient_material() {
             self.evaluations_cnt += 1;
             let evl = if pos.turn().is_white() {
-                eval(&pos, false)
+                eval(&pos, &legal_moves, false)
             } else {
-                -eval(&pos, false)
+                -eval(&pos, &legal_moves, false)
             };
             return Result {
                 score: evl,
@@ -328,7 +328,7 @@ impl MinMaxEngine {
         output::send_info(String::from("Final depth:") + &*depth.to_string());
         let chosen = best_move.unwrap();
         self.pos.play_unchecked(&chosen);
-        eval(&self.pos, true);
+        // eval(&self.pos, true);
         chosen.clone()
     }
 }
