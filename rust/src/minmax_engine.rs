@@ -102,21 +102,33 @@ impl MinMaxEngine {
         }
 
         let mut legal_moves: MoveList = pos.legal_moves();
+        self.evaluations_cnt += 1;
+        let stand_pat = if pos.turn().is_white() {
+            eval(&pos, false)
+        } else {
+            -eval(&pos, false)
+        };
         
+        if stand_pat >= beta {
+            return Result {
+                score: stand_pat,
+                chosen_move: None,
+                computed: true,
+            };  
+        }
+
+        if alpha < stand_pat {
+            alpha = stand_pat;
+        }
+
         // if pos.outcome().is_some() || qdepth == 0 {
         if pos.is_variant_end()
             || legal_moves.is_empty()
             || pos.is_insufficient_material()
             || qdepth == 0
         {
-            self.evaluations_cnt += 1;
-            let evl = if pos.turn().is_white() {
-                eval(&pos, false)
-            } else {
-                -eval(&pos, false)
-            };
             return Result {
-                score: evl,
+                score: stand_pat,
                 chosen_move: None,
                 computed: true,
             };
@@ -127,15 +139,10 @@ impl MinMaxEngine {
                 .into_iter()
                 .filter(|mv| mv.is_capture())
                 .collect::<ArrayVec<Move, 256>>();
+
             if legal_moves.is_empty() {
-                self.evaluations_cnt += 1;
-                let evl = if pos.turn().is_white() {
-                    eval(&pos, false)
-                } else {
-                    -eval(&pos, false)
-                };
                 return Result {
-                    score: evl,
+                    score: stand_pat,
                     chosen_move: None,
                     computed: true,
                 };
@@ -159,17 +166,17 @@ impl MinMaxEngine {
 
         move_order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
-        let mut best_move: Move = move_order[0].1.clone();
         for (_, next_move) in move_order {
             let mut new_pos = pos.clone();
             new_pos.play_unchecked(&next_move);
 
             let mut result: Result = self.quiescence(new_pos, qdepth - 1, -beta, -alpha, end_time);
             result.score = -result.score;
+
             if result.computed == false {
                 return Result {
                     score: alpha,
-                    chosen_move: Some(best_move),
+                    chosen_move: None,
                     computed: false,
                 };
             }
@@ -177,20 +184,19 @@ impl MinMaxEngine {
             if result.score >= beta {
                 return Result {
                     score: beta,
-                    chosen_move: Some(best_move),
+                    chosen_move: None,
                     computed: true,
                 };
             }
 
             if result.score > alpha {
                 alpha = result.score;
-                best_move = next_move.clone();
             }
         }
 
         return Result {
             score: alpha,
-            chosen_move: Some(best_move),
+            chosen_move: None,
             computed: true,
         };
     }
@@ -298,14 +304,14 @@ impl MinMaxEngine {
         let mut depth = 1;
 
         // let mut best_score = -1e9;
-        let mut best_move: Option<Move> = None;
+        let mut best_move: Option<Move> = Some(self.pos.legal_moves()[0].clone());
         let end_time = Instant::now().add(Duration::from_millis(default_time_manager(time)));
         while depth <= Self::MAX_DEPTH {
             output::send_info(String::from("Depth:") + &*depth.to_string());
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
-                depth,
+                2 * depth,
                 -1000000000.0,
                 1000000000.0,
                 end_time,
@@ -337,7 +343,7 @@ mod mod_minmax_tests {
         let mut engine = MinMaxEngine::new(Chess::default());
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
         let depth = 8;
-        let result = engine.negamax(Chess::default(), depth, 2, -1e9, 1e9, end_time);
+        let result = engine.negamax(Chess::default(), depth, 2 * depth, -1e9, 1e9, end_time);
         send_info(String::from("Score ") + &*result.score.to_string());
         println!("Evaluation_cnt={}", engine.evaluations_cnt);
     }
