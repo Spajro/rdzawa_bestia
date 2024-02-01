@@ -1,12 +1,16 @@
+use std::fs;
 use crate::engine::Engine;
 use crate::evaluation::eval;
-use crate::output::{self, send, send_info};
+use crate::output::{self, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
 use output::send_move;
-use shakmaty::{Chess, Move, MoveList, Position, Role};
+use shakmaty::{CastlingMode, Chess, Move, MoveList, Position, Role};
 use std::ops::Add;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
+use json::{JsonValue};
+use shakmaty::uci::Uci;
 
 struct Result {
     score: f32,
@@ -46,6 +50,8 @@ pub struct MinMaxEngine {
     pub pos: Chess,
     pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
     pub evaluations_cnt: i32,
+    pub book: JsonValue,
+    pub use_book: bool,
 }
 
 impl Engine for MinMaxEngine {
@@ -58,6 +64,16 @@ impl Engine for MinMaxEngine {
     }
 
     fn update(&mut self, mv: Move) {
+        let book = self.book.clone();
+        let mov = mv.to_uci(CastlingMode::Standard).to_string();
+        if self.use_book && book.has_key(mov.as_str()) {
+            send_info("Move in book:".to_string() + &*mov);
+            let nxt = self.book[mov.as_str()].clone();
+            self.book = nxt;
+        } else {
+            self.use_book = false
+        }
+        send_info("Move updated:".to_string() + &*mov);
         self.pos.play_unchecked(&mv);
     }
 
@@ -78,10 +94,14 @@ impl MinMaxEngine {
         for _ in 0..Self::MAX_DEPTH {
             km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
         }
+        let json = fs::read_to_string("book.json").unwrap();
+        let book = json::parse(&*json).unwrap();
         MinMaxEngine {
             pos: pos,
             killer_moves: km,
             evaluations_cnt: 0,
+            book: book,
+            use_book: true,
         }
     }
 
@@ -153,13 +173,13 @@ impl MinMaxEngine {
             .iter()
             .map(|mv| {
                 let role = mv.role();
-                match role {
-                    Role::Pawn => return (1, mv),
-                    Role::Knight => return (3, mv),
-                    Role::Bishop => return (4, mv),
-                    Role::Rook => return (5, mv),
-                    Role::Queen => return (9, mv),
-                    Role::King => return (10, mv),
+                return match role {
+                    Role::Pawn => (1, mv),
+                    Role::Knight => (3, mv),
+                    Role::Bishop => (4, mv),
+                    Role::Rook => (5, mv),
+                    Role::Queen => (9, mv),
+                    Role::King => (10, mv),
                 }
             })
             .collect::<Vec<(i16, &Move)>>();
@@ -299,15 +319,28 @@ impl MinMaxEngine {
             computed: true,
         };
     }
-
     fn find_best_move(&mut self, time: u64) -> Move {
+        let book = self.book.clone();
+        if self.use_book && book.has_key("best") {
+            let mv = book["best"].as_str().unwrap();
+            let nxt = self.book[mv].clone();
+            self.book = nxt;
+            send_info("Move from book:".to_string() + mv);
+            let mov = Uci::from_str(mv).unwrap().to_move(&self.pos).unwrap();
+            self.pos.play_unchecked(&mov);
+            return mov;
+        } else {
+            self.use_book = false
+        }
+        send_info("No move found".to_string());
+
         let mut depth = 1;
 
         // let mut best_score = -1e9;
         let mut best_move: Option<Move> = Some(self.pos.legal_moves()[0].clone());
         let end_time = Instant::now().add(Duration::from_millis(default_time_manager(time)));
         while depth <= Self::MAX_DEPTH {
-            output::send_info(String::from("Depth:") + &*depth.to_string());
+            send_info(String::from("Depth:") + &*depth.to_string());
             let result = self.negamax(
                 self.pos.clone(),
                 depth,
@@ -316,7 +349,7 @@ impl MinMaxEngine {
                 1000000000.0,
                 end_time,
             );
-            output::send_info(String::from("Score ") + &*result.score.to_string());
+            send_info(String::from("Score ") + &*result.score.to_string());
             if result.computed == false {
                 depth -= 1;
                 break;

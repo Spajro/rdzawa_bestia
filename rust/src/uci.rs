@@ -3,6 +3,7 @@ use std::str::FromStr;
 use shakmaty::{CastlingMode, Move, Position};
 use shakmaty::uci::Uci;
 use crate::engine::Engine;
+use crate::output::send_info;
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
     let tokens: Vec<&str> = uci.split(' ').collect();
@@ -52,6 +53,7 @@ fn stop(engine: &mut dyn Engine) -> Option<String> {
 }
 
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
+    send_info("DEBUG ".to_string()+tokens[tokens.len() - 1]);
     engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
     None
 }
