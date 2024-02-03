@@ -7,6 +7,7 @@ use arrayvec::ArrayVec;
 use output::send_move;
 use shakmaty::{CastlingMode, Chess, Move, MoveList, Position, Role};
 use std::ops::Add;
+use std::path::Path;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use json::{JsonValue};
@@ -94,15 +95,25 @@ impl MinMaxEngine {
         for _ in 0..Self::MAX_DEPTH {
             km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
         }
-        let json = fs::read_to_string("book.json").unwrap();
-        let book = json::parse(&*json).unwrap();
-        MinMaxEngine {
-            pos: pos,
-            killer_moves: km,
-            evaluations_cnt: 0,
-            book: book,
-            use_book: true,
-        }
+        return if Path::new("book.json").exists() {
+            let json = fs::read_to_string("book.json").unwrap();
+            let book = json::parse(&*json).unwrap();
+            MinMaxEngine {
+                pos: pos,
+                killer_moves: km,
+                evaluations_cnt: 0,
+                book: book,
+                use_book: true,
+            }
+        } else {
+            MinMaxEngine {
+                pos: pos,
+                killer_moves: km,
+                evaluations_cnt: 0,
+                book: JsonValue::Null,
+                use_book: false,
+            }
+        };
     }
 
     fn quiescence(
@@ -180,7 +191,7 @@ impl MinMaxEngine {
                     Role::Rook => (5, mv),
                     Role::Queen => (9, mv),
                     Role::King => (10, mv),
-                }
+                };
             })
             .collect::<Vec<(i16, &Move)>>();
 
