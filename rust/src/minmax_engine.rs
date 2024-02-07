@@ -348,7 +348,7 @@ impl MinMaxEngine {
 
         let mut depth = 1;
         let mut estimation = 0.0;
-        let delta = 50.0; // half of the pawn
+        let delta = 30.0; // 0.3 of the pawn
         let pos_inf = 1e9;
         let neg_inf = -1e9;
         // let mut best_score = -1e9;
