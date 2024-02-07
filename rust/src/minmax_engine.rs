@@ -1,17 +1,17 @@
-use std::fs;
 use crate::engine::Engine;
 use crate::evaluation::eval;
 use crate::output::{self, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
+use json::JsonValue;
 use output::send_move;
+use shakmaty::uci::Uci;
 use shakmaty::{CastlingMode, Chess, Move, MoveList, Position, Role};
+use std::fs;
 use std::ops::Add;
 use std::path::Path;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
-use json::{JsonValue};
-use shakmaty::uci::Uci;
 
 struct Result {
     score: f32,
@@ -330,6 +330,7 @@ impl MinMaxEngine {
             computed: true,
         };
     }
+
     fn find_best_move(&mut self, time: u64) -> Move {
         let book = self.book.clone();
         if self.use_book && book.has_key("best") {
@@ -346,27 +347,61 @@ impl MinMaxEngine {
         send_info("No move found".to_string());
 
         let mut depth = 1;
-
+        let mut estimation = 0.0;
+        let delta = 50.0; // half of the pawn
+        let pos_inf = 1e9;
+        let neg_inf = -1e9;
         // let mut best_score = -1e9;
         let mut best_move: Option<Move> = Some(self.pos.legal_moves()[0].clone());
         let end_time = Instant::now().add(Duration::from_millis(default_time_manager(time)));
-        while depth <= Self::MAX_DEPTH {
+
+        while depth < Self::MAX_DEPTH {
             send_info(String::from("Depth:") + &*depth.to_string());
-            let result = self.negamax(
-                self.pos.clone(),
-                depth,
-                2 * depth,
-                -1000000000.0,
-                1000000000.0,
-                end_time,
-            );
+            let alpha: f32 = estimation - delta;
+            let beta: f32 = estimation + delta;
+            let qdepth = 2 * depth;
+
+            let mut result;
+            if depth < 3 {
+                result =
+                    self.negamax(self.pos.clone(), depth, qdepth, neg_inf, pos_inf, end_time);
+            } else {
+                result =
+                    self.negamax(self.pos.clone(), depth, qdepth, alpha, beta, end_time);
+
+                if result.score >= beta {
+                    result = self.negamax(
+                        self.pos.clone(),
+                        depth,
+                        qdepth,
+                        result.score,
+                        pos_inf,
+                        end_time,
+                    );
+                } else if result.score <= alpha {
+                    result = self.negamax(
+                        self.pos.clone(),
+                        depth,
+                        qdepth,
+                        neg_inf,
+                        result.score,
+                        end_time,
+                    );
+                }
+
+                if result.score <= alpha || result.score >= beta {
+                    result =
+                        self.negamax(self.pos.clone(), depth, qdepth, neg_inf, pos_inf, end_time);
+                }
+            }
+
             send_info(String::from("Score ") + &*result.score.to_string());
             if result.computed == false {
                 depth -= 1;
                 break;
             }
+            estimation = result.score;
             best_move = result.chosen_move;
-            // best_score = result.score;
             depth += 1;
         }
         output::send_info(String::from("Final depth:") + &*depth.to_string());
