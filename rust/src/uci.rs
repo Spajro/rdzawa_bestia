@@ -1,5 +1,6 @@
 use std::ops::Add;
 use std::str::FromStr;
+use std::process;
 use shakmaty::{CastlingMode, Move, Position};
 use shakmaty::uci::Uci;
 use crate::engine::Engine;
@@ -9,6 +10,10 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
     let tokens: Vec<&str> = uci.split(' ').collect();
     let mut time: Option<u64> = None;
     for i in (1..tokens.len()).step_by(2) {
+        if tokens[i] == "movetime" {
+            time = Some(tokens[i + 1].parse().unwrap());
+            break;
+        }
         if tokens[i] == "wtime" && engine.get_status().turn().is_white() {
             time = Some(tokens[i + 1].parse().unwrap());
             break;
@@ -25,6 +30,7 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
         "go" => go(engine, time.unwrap()),
         "stop" => stop(engine),
         "position" => update(engine, tokens),
+        "quit" => quit(),
         &_ => Some("Unknown command".parse().unwrap())
     }
 }
@@ -52,8 +58,15 @@ fn stop(engine: &mut dyn Engine) -> Option<String> {
     None
 }
 
+fn quit() -> Option<String> {
+    process::exit(0);
+}
+
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
     send_info("DEBUG ".to_string()+tokens[tokens.len() - 1]);
+    if tokens.len() == 2 && tokens[1] == "startpos" {
+        return None
+    }
     engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
     None
 }
