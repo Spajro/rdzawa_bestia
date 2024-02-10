@@ -10,6 +10,7 @@ mod output;
 mod time_management;
 mod uci;
 mod quiesence;
+mod killer_moves;
 
 fn main() {
     let mut input = String::new();
