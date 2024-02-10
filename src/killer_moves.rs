@@ -10,13 +10,12 @@ pub struct KillerMoves<const MAX_SIZE: usize> {
 impl<const MAX_SIZE: usize> KillerMoves<MAX_SIZE> {
     pub fn new() -> Self {
         let mut moves = ArrayVec::<_, { MAX_SIZE }>::new();
-        for _ in 0..MAX_SIZE {
-            // TODO jakoś ładniej to zrobić:
-            moves.push(Move::Put {
-                role: shakmaty::Role::Pawn,
-                to: shakmaty::Square::E5,
-            });
-        }
+
+        (0..MAX_SIZE).into_iter().map(|_| Move::Put {
+            role: shakmaty::Role::Pawn,
+            to: shakmaty::Square::E5,
+        }).for_each(|put| moves.push(put));
+
         KillerMoves::<MAX_SIZE> {
             moves: moves,
             size: 0,
