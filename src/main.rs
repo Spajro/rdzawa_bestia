@@ -9,6 +9,7 @@ mod minmax_engine;
 mod output;
 mod time_management;
 mod uci;
+mod quiesence;
 
 fn main() {
     let mut input = String::new();
