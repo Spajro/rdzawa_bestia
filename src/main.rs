@@ -1,22 +1,18 @@
 use crate::minmax_engine::MinMaxEngine;
-use crate::output::send;
+use crate::io::output::send;
 use shakmaty::Chess;
-use std::io;
+use crate::io::uci;
 
 mod engine;
-mod evaluation;
 mod minmax_engine;
-mod output;
-mod time_management;
-mod uci;
-mod quiesence;
-mod killer_moves;
-mod opening_book;
+
+mod features;
+mod io;
 
 fn main() {
     let mut input = String::new();
     let mut engine = MinMaxEngine::new(Chess::default());
-    let stdin = io::stdin();
+    let stdin = std::io::stdin();
     loop {
         stdin.read_line(&mut input).expect("panic message");
         if input.ends_with('\n') {

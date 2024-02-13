@@ -1,6 +1,6 @@
 use shakmaty::{Board, Chess, Color, File, Position, Rank, Square, Bitboard, MoveList};
 
-use crate::output::send_info;
+use crate::io::output::send_info;
 
 pub const KING_SQUARE_TABLE: [i32; 64] = [
     // -70, -70, -70, -70, -70, -70, -70, -70, 

@@ -1,7 +1,7 @@
 use std::time::Instant;
 use arrayvec::ArrayVec;
 use shakmaty::{Chess, Move, MoveList, Position, Role};
-use crate::evaluation::eval;
+use crate::features::evaluation::eval;
 use crate::minmax_engine::{MinMaxEngine, Result};
 
 pub fn quiescence(

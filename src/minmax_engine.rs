@@ -1,15 +1,15 @@
 use crate::engine::Engine;
-use crate::evaluation::eval;
-use crate::output::{self, send_info};
-use crate::time_management::default_time_manager;
+use crate::features::evaluation::eval;
+use crate::io::output::send_info;
+use crate::features::time_management::default_time_manager;
 use arrayvec::ArrayVec;
-use output::send_move;
+use crate::io::output::send_move;
 use shakmaty::{CastlingMode, Chess, Move, MoveList, Position};
 use std::ops::Add;
 use std::time::{Duration, Instant};
-use crate::killer_moves::KillerMoves;
-use crate::opening_book::OpeningBook;
-use crate::quiesence::quiescence;
+use crate::features::killer_moves::KillerMoves;
+use crate::features::opening_book::OpeningBook;
+use crate::features::quiesence::quiescence;
 
 pub struct Result {
     pub(crate) score: f32,

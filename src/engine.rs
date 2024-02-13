@@ -1,7 +1,6 @@
 use shakmaty::{Chess, Move, Position};
 use rand::seq::SliceRandom;
-use output::send_move;
-use crate::output;
+use crate::io::output::send_move;
 
 pub trait Engine {
     fn start(&mut self, time: u64);

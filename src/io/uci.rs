@@ -4,7 +4,7 @@ use std::process;
 use shakmaty::{CastlingMode, Move, Position};
 use shakmaty::uci::Uci;
 use crate::engine::Engine;
-use crate::output::send_info;
+use crate::io::output::send_info;
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
     let tokens: Vec<&str> = uci.split(' ').collect();

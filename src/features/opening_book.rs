@@ -4,7 +4,7 @@ use std::str::FromStr;
 use json::JsonValue;
 use shakmaty::{Chess, Move};
 use shakmaty::uci::Uci;
-use crate::output::send_info;
+use crate::io::output::send_info;
 
 #[derive(Clone)]
 pub struct OpeningBook {
