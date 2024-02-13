@@ -11,6 +11,7 @@ mod time_management;
 mod uci;
 mod quiesence;
 mod killer_moves;
+mod opening_book;
 
 fn main() {
     let mut input = String::new();

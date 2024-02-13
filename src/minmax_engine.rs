@@ -3,16 +3,12 @@ use crate::evaluation::eval;
 use crate::output::{self, send_info};
 use crate::time_management::default_time_manager;
 use arrayvec::ArrayVec;
-use json::JsonValue;
 use output::send_move;
-use shakmaty::uci::Uci;
 use shakmaty::{CastlingMode, Chess, Move, MoveList, Position};
-use std::fs;
 use std::ops::Add;
-use std::path::Path;
-use std::str::FromStr;
 use std::time::{Duration, Instant};
 use crate::killer_moves::KillerMoves;
+use crate::opening_book::OpeningBook;
 use crate::quiesence::quiescence;
 
 pub struct Result {
@@ -25,8 +21,7 @@ pub struct MinMaxEngine {
     pub pos: Chess,
     pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
     pub evaluations_cnt: i32,
-    pub book: JsonValue,
-    pub use_book: bool,
+    pub book: OpeningBook,
 }
 
 impl Engine for MinMaxEngine {
@@ -39,16 +34,8 @@ impl Engine for MinMaxEngine {
     }
 
     fn update(&mut self, mv: Move) {
-        let book = self.book.clone();
         let mov = mv.to_uci(CastlingMode::Standard).to_string();
-        if self.use_book && book.has_key(mov.as_str()) {
-            send_info("Move in book:".to_string() + &*mov);
-            let nxt = self.book[mov.as_str()].clone();
-            self.book = nxt;
-        } else {
-            self.use_book = false
-        }
-        send_info("Move updated:".to_string() + &*mov);
+        self.book = self.book.clone().update(mov);
         self.pos.play_unchecked(&mv);
     }
 
@@ -69,25 +56,12 @@ impl MinMaxEngine {
         for _ in 0..Self::MAX_DEPTH {
             km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
         }
-        return if Path::new("book.json").exists() {
-            let json = fs::read_to_string("book.json").unwrap();
-            let book = json::parse(&*json).unwrap();
-            MinMaxEngine {
-                pos: pos,
-                killer_moves: km,
-                evaluations_cnt: 0,
-                book: book,
-                use_book: true,
-            }
-        } else {
-            MinMaxEngine {
-                pos: pos,
-                killer_moves: km,
-                evaluations_cnt: 0,
-                book: JsonValue::Null,
-                use_book: false,
-            }
-        };
+        MinMaxEngine {
+            pos: pos,
+            killer_moves: km,
+            evaluations_cnt: 0,
+            book: OpeningBook::new(),
+        }
     }
 
 
@@ -191,19 +165,13 @@ impl MinMaxEngine {
     }
 
     fn find_best_move(&mut self, time: u64) -> Move {
-        let book = self.book.clone();
-        if self.use_book && book.has_key("best") {
-            let mv = book["best"].as_str().unwrap();
-            let nxt = self.book[mv].clone();
-            self.book = nxt;
-            send_info("Move from book:".to_string() + mv);
-            let mov = Uci::from_str(mv).unwrap().to_move(&self.pos).unwrap();
+        let book_result = self.book.clone().try_get_best(&self.pos);
+        self.book = book_result.book;
+        if book_result.mv.is_some() {
+            let mov=book_result.mv.unwrap();
             self.pos.play_unchecked(&mov);
             return mov;
-        } else {
-            self.use_book = false
         }
-        send_info("No move found".to_string());
 
         let mut depth = 1;
         let mut estimation = 0.0;
