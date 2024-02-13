@@ -31,12 +31,12 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
         "stop" => stop(engine),
         "position" => update(engine, tokens),
         "quit" => quit(),
-        &_ => Some("Unknown command".parse().unwrap())
+        &_ => Some("Unknown command |".to_string() + uci+"|")
     }
 }
 
 fn start() -> Option<String> {
-    Some("id name NAME\nuciok".parse().unwrap())
+    Some("id name rdzawa_bestia\nuciok".parse().unwrap())
 }
 
 fn is_ready() -> Option<String> {
@@ -63,9 +63,9 @@ fn quit() -> Option<String> {
 }
 
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
-    send_info("DEBUG ".to_string()+tokens[tokens.len() - 1]);
+    send_info("DEBUG ".to_string() + tokens[tokens.len() - 1]);
     if tokens.len() == 2 && tokens[1] == "startpos" {
-        return None
+        return None;
     }
     engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
     None
