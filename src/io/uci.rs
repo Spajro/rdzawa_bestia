@@ -14,14 +14,14 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
             time = Some(tokens[i + 1].parse().unwrap());
             break;
         }
-        if tokens[i] == "wtime" && engine.get_status().turn().is_white() {
-            time = Some(tokens[i + 1].parse().unwrap());
-            break;
-        }
-        if tokens[i] == "btime" && engine.get_status().turn().is_black() {
-            time = Some(tokens[i + 1].parse().unwrap());
-            break;
-        }
+        // if tokens[i] == "wtime" && engine.get_status().turn().is_white() {
+        //     time = Some(tokens[i + 1].parse().unwrap());
+        //     break;
+        // }
+        // if tokens[i] == "btime" && engine.get_status().turn().is_black() {
+        //     time = Some(tokens[i + 1].parse().unwrap());
+        //     break;
+        // }
     }
     match tokens[0] {
         "uci" => start(),
@@ -67,7 +67,7 @@ fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
     if tokens.len() == 2 && tokens[1] == "startpos" {
         return None;
     }
-    engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
+    // engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
     None
 }
 

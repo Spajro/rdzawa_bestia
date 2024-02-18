@@ -1,27 +1,20 @@
-use shakmaty::{Board, Chess, Color, File, Position, Rank, Square, Bitboard, MoveList};
+use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square};
 
 use crate::io::output::send_info;
 
+#[rustfmt::skip]
 pub const KING_SQUARE_TABLE: [i32; 64] = [
-    // -70, -70, -70, -70, -70, -70, -70, -70, 
-    // -70, -70, -70, -70, -70, -70, -70, -70, 
-    // -70, -70, -70, -70, -70, -70, -70, -70, 
-    // -70, -70, -70, -70, -70, -70, -70, -70, 
-    // -70, -70, -70, -70, -70, -70, -70, -70, 
-    // -60, -60, -60, -60, -60, -60, -60, -60, 
-    //   3,   1,  -5, -15, -15, -5,    1,   3, 
-    //   5,  20,  10,   0,   5,  0,   40,  20,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -30,-40,-40,-50,-50,-40,-40,-30,
-    -20,-30,-30,-40,-40,-30,-30,-20,
-    -10,-20,-20,-20,-20,-20,-20,-10,
-     20, 20,  0,  0,  0,  0, 20, 20,
+    -30,-40,-40,-50,-50,-40,-40,-30, 
+    -30,-40,-40,-50,-50,-40,-40,-30, 
+    -30,-40,-40,-50,-50,-40,-40,-30, 
+    -30,-40,-40,-50,-50,-40,-40,-30, 
+    -20,-30,-30,-40,-40,-30,-30,-20, 
+    -10,-20,-20,-20,-20,-20,-20,-10, 
+     20, 20,  0,  0,  0,  0, 20, 20, 
      20, 30, 10,  0,  0, 10, 30, 20,
-
 ];
 
+#[rustfmt::skip]
 pub const QUEEN_SQUARE_TABLE: [i32; 64] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
@@ -33,6 +26,7 @@ pub const QUEEN_SQUARE_TABLE: [i32; 64] = [
     -20,-10,-10, -5, -5,-10,-10,-20,
 ];
 
+#[rustfmt::skip]
 pub const ROOK_SQUARE_TABLE: [i32; 64] = [
     0,  0,  0,  0,  0,  0,  0,  0,
     5, 10, 10, 10, 10, 10, 10,  5,
@@ -44,6 +38,7 @@ pub const ROOK_SQUARE_TABLE: [i32; 64] = [
     0,  0,  0,  5,  5,  0,  0,  0,
 ];
 
+#[rustfmt::skip]
 pub const BISHOP_SQUARE_TABLE: [i32; 64] = [
     -20,-10,-10,-10,-10,-10,-10,-20,
     -10,  0,  0,  0,  0,  0,  0,-10,
@@ -55,16 +50,8 @@ pub const BISHOP_SQUARE_TABLE: [i32; 64] = [
     -20,-10,-10,-10,-10,-10,-10,-20,
 ];
 
+#[rustfmt::skip]
 pub const KNIGHT_SQUARE_TABLE: [i32; 64] = [
-    // -60, -60, -30, -30, -30, -30, -60, -60, 
-    // -40, -40, -20, -20, -20, -20, -40, -40, 
-    // -20,  60,  40,  60,  60, 100,  50,  20, 
-    //  -5,  10,  10,  40,  20,  20,  10,  10, 
-    // -10,   5,  10,  10,  20,  10,  20,  -8, 
-    // -15, -10,  12,  10,  10,  12, -10, -15, 
-    // -20, -50, -10,   0,   0, -10, -50, -20, 
-    // -100,-20, -30, -40, -40, -30, -20,-100,
-
     -50, -40, -30, -30, -30, -30, -40, -50,
     -40, -20,   0,   0,   0,   0, -20, -40,
     -30,   0,  10,  15,  15,  10,   0, -30,
@@ -75,15 +62,8 @@ pub const KNIGHT_SQUARE_TABLE: [i32; 64] = [
     -50, -40, -30, -30, -30, -30, -40, -50,
 ];
 
+#[rustfmt::skip]
 pub const PAWN_SQUARE_TABLE: [i32; 64] = [
-    //  0,  0,  0,  0,  0,  0,  0,  0, 
-    // 20, 25, 30, 35, 35, 30, 25, 20, 
-    // 15, 20, 25, 30, 30, 25, 20, 15, 
-    // 10, 15, 20, 25, 25, 20, 15, 10, 
-    //  5, 10, 15, 30, 30, 15, 10,  5, 
-    //  3,  5, 10, 15, 15, 10,  5,  3, 
-    //  0,  0,  0,  0,  0,  0,  0,  0, 
-    //  0,  0,  0,  0,  0,  0,  0,  0,
      0,  0,  0,  0,  0,  0,  0,  0, 
     50, 50, 50, 50, 50, 50, 50, 50,
     10, 10, 20, 30, 30, 20, 10, 10,
@@ -94,88 +74,84 @@ pub const PAWN_SQUARE_TABLE: [i32; 64] = [
      0,  0,  0,  0,  0,  0,  0,  0,
 ];
 
+fn file_distance(a: File, b: File) -> i32 {
+    i32::abs(a.to_index() as i32 - b.to_index() as i32)
+}
+
+fn rank_distance(a: Rank, b: Rank) -> i32 {
+    i32::abs(a.to_index() as i32 - b.to_index() as i32)
+}
+
 pub fn get_sq_val(sq: Square, square_table: [i32; 64], color: Color) -> i32 {
-    let index = sq.file().distance(File::H)
-        + 8 * sq.rank().distance(match color {
-            Color::White => Rank::Eighth,
-            Color::Black => Rank::First,
-        });
+    let index = file_distance(sq.get_file(), File::H)
+        + 8 * rank_distance(
+            sq.get_rank(),
+            match color {
+                Color::White => Rank::Eighth,
+                Color::Black => Rank::First,
+            },
+        );
     square_table[index as usize]
 }
 
-fn get_pieces_value(board: &Board, board_side: Bitboard) -> usize {
-      100 * board_side.intersect(board.pawns()).count()
-    + 320 * board_side.intersect(board.knights()).count()
-    + 330 * board_side.intersect(board.bishops()).count()
-    + 500 * board_side.intersect(board.rooks()).count()
-    + 900 * board_side.intersect(board.queens()).count()
+fn get_pieces_value(board: &Board, board_side: &BitBoard) -> u32 {
+    100 * (board.pieces(Piece::Pawn) & board_side).popcnt()
+        + 320 * (board.pieces(Piece::Knight) & board_side).popcnt()
+        + 330 * (board.pieces(Piece::Bishop) & board_side).popcnt()
+        + 500 * (board.pieces(Piece::Rook) & board_side).popcnt()
+        + 900 * (board.pieces(Piece::Queen) & board_side).popcnt()
 }
 
 pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
-    let color_board = board.by_color(color);
-    let king_pos_val = color_board
-        .intersect(board.kings())
+    let color_board = board.color_combined(color);
+    let king_pos_val = (color_board & board.pieces(Piece::King))
         .into_iter()
         .map(|sq| get_sq_val(sq, KING_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
-    let queen_pos_val = color_board
-        .intersect(board.queens())
+    let queen_pos_val = (color_board & board.pieces(Piece::Queen))
         .into_iter()
         .map(|sq| get_sq_val(sq, QUEEN_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
-    let rooks_pos_val = color_board
-        .intersect(board.rooks())
+    let rooks_pos_val = (color_board & board.pieces(Piece::Rook))
         .into_iter()
         .map(|sq| get_sq_val(sq, ROOK_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
-    let bishops_pos_val = color_board
-        .intersect(board.bishops())
+    let bishops_pos_val = (color_board & board.pieces(Piece::Bishop))
         .into_iter()
         .map(|sq| get_sq_val(sq, BISHOP_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
-    let knights_pos_val = color_board
-        .intersect(board.knights())
+    let knights_pos_val = (color_board & board.pieces(Piece::Knight))
         .into_iter()
         .map(|sq| get_sq_val(sq, KNIGHT_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
-    let pawns_pos_val = color_board
-        .intersect(board.pawns())
+    let pawns_pos_val = (color_board & board.pieces(Piece::Pawn))
         .into_iter()
         .map(|sq| get_sq_val(sq, PAWN_SQUARE_TABLE, color))
         .sum::<i32>() as f32;
 
-    king_pos_val
-        + queen_pos_val
-        + rooks_pos_val
-        + bishops_pos_val
-        + knights_pos_val
-        + pawns_pos_val
+    king_pos_val + queen_pos_val + rooks_pos_val + bishops_pos_val + knights_pos_val + pawns_pos_val
 }
 
-pub fn eval(chess: &Chess, legal_moves: &MoveList, debug: bool) -> f32 {
-    let board = chess.board();
-    // if chess.is_game_over() {
-    if chess.is_variant_end() || legal_moves.is_empty() || chess.is_insufficient_material() {
-        // return if chess.is_checkmate() {
-        return if !chess.checkers().is_empty() && legal_moves.is_empty() {
-            if chess.turn().is_white() {
-                // send_info("white:".to_string() + chess.fullmoves().get().to_string().as_str());
-                -1e9 + 100 as f32 * chess.fullmoves().get() as f32
+pub fn eval(board: &Board, debug: bool) -> f32 {
+    match board.status() {
+        BoardStatus::Checkmate => {
+            if board.side_to_move() == Color::White {
+                -1e9 as f32
             } else {
-                if debug {
-                    send_info("black:".to_string() + chess.fullmoves().get().to_string().as_str());
-                }
-                1e9 - 100 as f32 * chess.fullmoves().get() as f32
+                1e9 as f32
             }
-        } else {
-            0.0
-        };
-    }
+        }
 
-    let white_value = get_pieces_value(board, board.white());
-    let black_value = get_pieces_value(board, board.black());
-    white_value as f32 - black_value as f32 + get_position_cumulative_value(board, Color::White)
-        - get_position_cumulative_value(board, Color::Black)
+        BoardStatus::Stalemate => 0.0,
+
+        BoardStatus::Ongoing => {
+            let white_value = get_pieces_value(board, board.color_combined(Color::White));
+            let black_value = get_pieces_value(board, board.color_combined(Color::Black));
+            white_value as f32 - black_value as f32
+                + get_position_cumulative_value(board, Color::White)
+                - get_position_cumulative_value(board, Color::Black)
+        }
+    }
 }
 
 // #[cfg(test)]

@@ -1,7 +1,9 @@
 use crate::minmax_engine::MinMaxEngine;
 use crate::io::output::send;
+use chess::Board;
 use shakmaty::Chess;
 use crate::io::uci;
+// use chess::{Board, MoveGen, Game};
 
 mod engine;
 mod minmax_engine;
@@ -11,7 +13,7 @@ mod io;
 
 fn main() {
     let mut input = String::new();
-    let mut engine = MinMaxEngine::new(Chess::default());
+    let mut engine = MinMaxEngine::new(Board::default());
     let stdin = std::io::stdin();
     loop {
         stdin.read_line(&mut input).expect("panic message");

@@ -1,12 +1,12 @@
-use std::time::Instant;
-use arrayvec::ArrayVec;
-use shakmaty::{Chess, Move, MoveList, Position, Role};
 use crate::features::evaluation::eval;
 use crate::minmax_engine::{MinMaxEngine, Result};
+use arrayvec::ArrayVec;
+use chess::{BitBoard, Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPTY};
+use std::time::Instant;
 
 pub fn quiescence(
     mut engine: &mut MinMaxEngine,
-    pos: Chess,
+    pos: Board,
     qdepth: usize,
     mut alpha: f32,
     beta: f32,
@@ -20,12 +20,11 @@ pub fn quiescence(
         };
     }
 
-    let mut legal_moves: MoveList = pos.legal_moves();
     engine.evaluations_cnt += 1;
-    let stand_pat = if pos.turn().is_white() {
-        eval(&pos, &legal_moves, false)
+    let stand_pat = if pos.side_to_move() == Color::White {
+        eval(&pos, false)
     } else {
-        -eval(&pos, &legal_moves, false)
+        -eval(&pos, false)
     };
 
     if stand_pat >= beta {
@@ -40,12 +39,7 @@ pub fn quiescence(
         alpha = stand_pat;
     }
 
-    // if pos.outcome().is_some() || qdepth == 0 {
-    if pos.is_variant_end()
-        || legal_moves.is_empty()
-        || pos.is_insufficient_material()
-        || qdepth == 0
-    {
+    if pos.status() != BoardStatus::Ongoing || qdepth == 0 {
         return Result {
             score: stand_pat,
             chosen_move: None,
@@ -53,43 +47,40 @@ pub fn quiescence(
         };
     }
 
-    if !pos.is_check() {
-        legal_moves = legal_moves
-            .into_iter()
-            .filter(|mv| mv.is_capture())
-            .collect::<ArrayVec<Move, 256>>();
+    let mut moves_generator = MoveGen::new_legal(&pos);
+    if *pos.checkers() == EMPTY {
+        // TODO: no en-passant check here
+        moves_generator.set_iterator_mask(*pos.color_combined(!pos.side_to_move()));
 
-        if legal_moves.is_empty() {
-            return Result {
-                score: stand_pat,
-                chosen_move: None,
-                computed: true,
-            };
-        }
+        // legal_moves = legal_moves
+        //     .into_iter()
+        //     .filter(|mv| mv.is_capture())
+        //     .collect::<ArrayVec<Move, 256>>();
     }
 
-    let mut move_order: Vec<(i16, &Move)> = legal_moves
-        .iter()
+    let mut move_order = moves_generator
+        .into_iter()
         .map(|mv| {
-            let role = mv.role();
-            return match role {
-                Role::Pawn => (1, mv),
-                Role::Knight => (3, mv),
-                Role::Bishop => (4, mv),
-                Role::Rook => (5, mv),
-                Role::Queen => (9, mv),
-                Role::King => (10, mv),
+            return match pos.piece_on(mv.get_source()) {
+                Some(Piece::Pawn) => (1, mv),
+                Some(Piece::Knight) => (3, mv),
+                Some(Piece::Bishop) => (4, mv),
+                Some(Piece::Rook) => (5, mv),
+                Some(Piece::Queen) => (9, mv),
+                Some(Piece::King) => (10, mv),
+                None => (0, mv),
             };
         })
-        .collect::<Vec<(i16, &Move)>>();
+        .collect::<Vec<(i16, ChessMove)>>();
 
     move_order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
+    let mut new_pos = Board::default();
     for (_, next_move) in move_order {
-        let mut new_pos = pos.clone();
-        new_pos.play_unchecked(&next_move);
+        pos.make_move(next_move, &mut new_pos);
 
-        let mut result: Result = quiescence(&mut engine, new_pos, qdepth - 1, -beta, -alpha, end_time);
+        let mut result: Result =
+            quiescence(&mut engine, new_pos, qdepth - 1, -beta, -alpha, end_time);
         result.score = -result.score;
 
         if result.computed == false {
