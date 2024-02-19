@@ -240,9 +240,9 @@ impl MinMaxEngine {
 // cargo flamegraph --unit-test -- mod_minmax_tests::minmax_depth8_inital_position
 #[cfg(test)]
 mod mod_minmax_tests {
-    use chess::EMPTY;
-
     use super::*;
+    use chess::EMPTY;
+    use std::str::FromStr;
 
     #[test]
     fn minmax_depth8_inital_position() {
@@ -277,5 +277,41 @@ mod mod_minmax_tests {
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
         let pos = Board::default();
         quiescence(&mut engine, pos, 10, -1e9, 1e9, end_time);
+    }
+
+    #[test]
+    fn mate_in_one() {
+        // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
+        let board =
+            Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
+                .unwrap();
+
+        let mut engine = MinMaxEngine::new(board);
+        let start_time = Instant::now();
+        let max_time = start_time.add(Duration::from_secs(60 * 10));
+        let depth = 1;
+        let result = engine.negamax(board, depth, 0, -1e9, 1e9, max_time);
+        send_info(String::from("Score ") + &*result.score.to_string());
+        println!("Evaluation_cnt={}", engine.evaluations_cnt);
+
+        assert_eq!(result.score, 1e9);
+    }
+
+    #[test]
+    fn mate_in_four() {
+        // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
+        let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
+
+        let mut engine = MinMaxEngine::new(board);
+        let start_time = Instant::now();
+        let max_time = start_time.add(Duration::from_secs(60 * 10));
+        let depth = 7;
+        let result = engine.negamax(board, depth, 2 * depth, -1e9, 1e9, max_time);
+        let duration = Instant::now().duration_since(start_time);
+        send_info(String::from("Score ") + &*result.score.to_string());
+        println!("Evaluation_cnt={}", engine.evaluations_cnt);
+        println!("Duration: {:?}", duration);
+
+        assert_eq!(result.score, 1e9);
     }
 }
