@@ -1,4 +1,4 @@
-use shakmaty::Move;
+use chess::ChessMove;
 use uci::move_to_uci;
 use crate::uci;
 
@@ -6,7 +6,7 @@ pub fn send(string: String) {
     println!("{}", string);
 }
 
-pub fn send_move(mv: Move) {
+pub fn send_move(mv: ChessMove) {
     send(move_to_uci(mv));
 }
 

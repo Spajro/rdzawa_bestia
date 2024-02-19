@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use crate::features::evaluation::eval;
+use crate::features::evaluation::{eval, status};
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiesence::quiescence;
@@ -7,8 +7,7 @@ use crate::features::time_management::default_time_manager;
 use crate::io::output::send_info;
 use crate::io::output::send_move;
 use arrayvec::ArrayVec;
-use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
-// use shakmaty::{CastlingMode, Chess, Move, MoveList, Position};
+use chess::{Board, BoardBuilder, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::time::{Duration, Instant};
 
@@ -27,11 +26,11 @@ pub struct MinMaxEngine {
 
 impl Engine for MinMaxEngine {
     fn start(&mut self, time: u64) {
-        // send_move(self.find_best_move(time))
+        send_move(self.find_best_move(time))
     }
 
     fn stop(&mut self) {
-        // send_move(self.find_best_move(0))
+        send_move(self.find_best_move(0))
     }
 
     fn update(&mut self, mv: ChessMove) {
@@ -82,14 +81,16 @@ impl MinMaxEngine {
             };
         }
 
-        let legal_moves = MoveGen::new_legal(&pos);
-        if pos.status() != BoardStatus::Ongoing {
+        let moves_generator = MoveGen::new_legal(&pos);
+        let any_legal_move = moves_generator.size_hint().0 > 0;
+
+        if status(&pos, any_legal_move) != BoardStatus::Ongoing {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                eval(&pos, false)
+                eval(&pos, any_legal_move)
             } else {
-                -eval(&pos, false)
+                -eval(&pos, any_legal_move)
             };
             return Result {
                 score: evl,
@@ -105,7 +106,7 @@ impl MinMaxEngine {
         let km_min_value = 1e6;
         let km_size: f32 = Self::KILLER_MOVES_SIZE as f32;
         // move ordering (killer moves first)
-        let mut move_order = legal_moves
+        let mut move_order = moves_generator
             .into_iter()
             .map(|mv: ChessMove| {
                 for i in 0..self.killer_moves[depth].size {
@@ -118,12 +119,11 @@ impl MinMaxEngine {
             .collect::<Vec<(f32, ChessMove)>>();
 
         // reverse sort
-        move_order.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
-
-        let mut best_move = move_order[0].1;
+        move_order.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        let mut best_move = move_order[0].1.clone();
 
         // send_info("len: ".to_string() + move_ordering.len().to_string().as_str());
-        let mut new_pos = Board::default();
+        let mut new_pos = pos.clone();
         for (value, next_move) in move_order {
             pos.make_move(next_move, &mut new_pos);
 
@@ -240,15 +240,42 @@ impl MinMaxEngine {
 // cargo flamegraph --unit-test -- mod_minmax_tests::minmax_depth8_inital_position
 #[cfg(test)]
 mod mod_minmax_tests {
+    use chess::EMPTY;
+
     use super::*;
 
     #[test]
     fn minmax_depth8_inital_position() {
         let mut engine = MinMaxEngine::new(Board::default());
-        let end_time = Instant::now().add(Duration::from_secs(60 * 10));
+        let start_time = Instant::now();
+        let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 8;
-        let result = engine.negamax(Board::default(), depth, 2 * depth, -1e9, 1e9, end_time);
+        let result = engine.negamax(Board::default(), depth, 2 * depth, -1e9, 1e9, max_time);
+        let duration = Instant::now().duration_since(start_time);
         send_info(String::from("Score ") + &*result.score.to_string());
         println!("Evaluation_cnt={}", engine.evaluations_cnt);
+
+        let evaluations_per_second = engine.evaluations_cnt as f32 / duration.as_secs_f32();
+        println!("Evaluations per second = {}", evaluations_per_second);
+    }
+
+    #[test]
+    fn capture_moves() {
+        let pos = Board::default();
+        let mut moves_generator = MoveGen::new_legal(&pos);
+        assert_eq!(*pos.checkers(), EMPTY);
+        moves_generator.set_iterator_mask(*pos.color_combined(!pos.side_to_move()));
+
+        moves_generator.for_each(|m| {
+            println!("move: {}", m.to_string());
+        });
+    }
+
+    #[test]
+    fn test_quiescence() {
+        let mut engine = MinMaxEngine::new(Board::default());
+        let end_time = Instant::now().add(Duration::from_secs(60 * 10));
+        let pos = Board::default();
+        quiescence(&mut engine, pos, 10, -1e9, 1e9, end_time);
     }
 }
