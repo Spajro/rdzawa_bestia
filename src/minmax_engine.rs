@@ -11,6 +11,7 @@ use arrayvec::ArrayVec;
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::time::{Duration, Instant};
+use crate::features::transposition_table::TranspositionTable;
 
 pub struct Result {
     pub(crate) score: f32,
@@ -23,6 +24,7 @@ pub struct MinMaxEngine {
     pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
+    pub transposition_table: TranspositionTable,
 }
 
 impl Engine for MinMaxEngine {
@@ -62,6 +64,7 @@ impl MinMaxEngine {
             killer_moves: km,
             evaluations_cnt: 0,
             book: OpeningBook::new(),
+            transposition_table: TranspositionTable::new(),
         }
     }
 
@@ -81,6 +84,17 @@ impl MinMaxEngine {
                 chosen_move: None,
                 computed: false,
             };
+        }
+
+        let transposition_entry = self.transposition_table.find(&self.pos);
+        if transposition_entry.is_some() {
+            send_info(String::from("[TT] Table hit"));
+            let entry = transposition_entry.unwrap();
+            return Result{
+                score: entry.score,
+                chosen_move: Some(entry.mv),
+                computed: true,
+            }
         }
 
         let moves_generator = MoveGen::new_legal(&pos);
@@ -151,6 +165,7 @@ impl MinMaxEngine {
             }
 
             if result.score >= beta {
+                self.transposition_table.insert(&pos, beta, best_move.clone(),0);
                 return Result {
                     score: beta,
                     chosen_move: Some(best_move),
