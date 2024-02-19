@@ -176,13 +176,21 @@ mod eval_tests {
     use super::*;
 
     #[test]
-    fn mate_in_two() {
+    fn mate_in_one() {
         // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
         let board =
             Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
                 .unwrap();
         // println!("board: {:?}", board);
         assert_eq!(eval(&board, true), -400.0)
+    }
+
+    #[test]
+    fn mate_in_four() {
+        // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
+        let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
+        // println!("board: {:?}", board);
+        assert_eq!(eval(&board, true), -85.0)
     }
 }
 
