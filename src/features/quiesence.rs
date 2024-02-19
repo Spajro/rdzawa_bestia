@@ -1,7 +1,8 @@
-use crate::features::evaluation::eval;
+use crate::features::evaluation::{eval, status};
 use crate::minmax_engine::{MinMaxEngine, Result};
 use arrayvec::ArrayVec;
 use chess::{BitBoard, Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPTY};
+use rand::seq::SliceRandom;
 use std::time::Instant;
 
 pub fn quiescence(
@@ -20,11 +21,18 @@ pub fn quiescence(
         };
     }
 
+    let mut moves_generator = MoveGen::new_legal(&pos);
+    let any_legal_move = moves_generator.size_hint().0 > 0;
+    if *pos.checkers() == EMPTY {
+        // TODO: no en-passant check here
+        moves_generator.set_iterator_mask(*pos.color_combined(!pos.side_to_move()));
+    }
+
     engine.evaluations_cnt += 1;
     let stand_pat = if pos.side_to_move() == Color::White {
-        eval(&pos, false)
+        eval(&pos, any_legal_move)
     } else {
-        -eval(&pos, false)
+        -eval(&pos, any_legal_move)
     };
 
     if stand_pat >= beta {
@@ -39,23 +47,12 @@ pub fn quiescence(
         alpha = stand_pat;
     }
 
-    if pos.status() != BoardStatus::Ongoing || qdepth == 0 {
+    if status(&pos, any_legal_move) != BoardStatus::Ongoing || qdepth == 0 {
         return Result {
             score: stand_pat,
             chosen_move: None,
             computed: true,
         };
-    }
-
-    let mut moves_generator = MoveGen::new_legal(&pos);
-    if *pos.checkers() == EMPTY {
-        // TODO: no en-passant check here
-        moves_generator.set_iterator_mask(*pos.color_combined(!pos.side_to_move()));
-
-        // legal_moves = legal_moves
-        //     .into_iter()
-        //     .filter(|mv| mv.is_capture())
-        //     .collect::<ArrayVec<Move, 256>>();
     }
 
     let mut move_order = moves_generator
@@ -73,9 +70,17 @@ pub fn quiescence(
         })
         .collect::<Vec<(i16, ChessMove)>>();
 
-    move_order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    if move_order.is_empty() {
+        return Result {
+            score: stand_pat,
+            chosen_move: None,
+            computed: true,
+        };
+    }
 
-    let mut new_pos = Board::default();
+    move_order.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+
+    let mut new_pos = pos.clone();
     for (_, next_move) in move_order {
         pos.make_move(next_move, &mut new_pos);
 

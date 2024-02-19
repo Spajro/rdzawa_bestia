@@ -1,10 +1,9 @@
-use std::ops::Add;
-use std::str::FromStr;
-use std::process;
-use shakmaty::{CastlingMode, Move, Position};
-use shakmaty::uci::Uci;
 use crate::engine::Engine;
 use crate::io::output::send_info;
+use chess::{ChessMove, Color};
+use std::ops::Add;
+use std::process;
+use std::str::FromStr;
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
     let tokens: Vec<&str> = uci.split(' ').collect();
@@ -14,14 +13,14 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
             time = Some(tokens[i + 1].parse().unwrap());
             break;
         }
-        // if tokens[i] == "wtime" && engine.get_status().turn().is_white() {
-        //     time = Some(tokens[i + 1].parse().unwrap());
-        //     break;
-        // }
-        // if tokens[i] == "btime" && engine.get_status().turn().is_black() {
-        //     time = Some(tokens[i + 1].parse().unwrap());
-        //     break;
-        // }
+        if tokens[i] == "wtime" && engine.get_status().side_to_move() == Color::White {
+            time = Some(tokens[i + 1].parse().unwrap());
+            break;
+        }
+        if tokens[i] == "btime" && engine.get_status().side_to_move() == Color::Black {
+            time = Some(tokens[i + 1].parse().unwrap());
+            break;
+        }
     }
     match tokens[0] {
         "uci" => start(),
@@ -31,7 +30,7 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine) -> Option<String> {
         "stop" => stop(engine),
         "position" => update(engine, tokens),
         "quit" => quit(),
-        &_ => Some("Unknown command |".to_string() + uci+"|")
+        &_ => Some("Unknown command |".to_string() + uci + "|"),
     }
 }
 
@@ -67,10 +66,10 @@ fn update(engine: &mut dyn Engine, tokens: Vec<&str>) -> Option<String> {
     if tokens.len() == 2 && tokens[1] == "startpos" {
         return None;
     }
-    // engine.update(Uci::from_str(tokens[tokens.len() - 1]).unwrap().to_move(&engine.get_status()).unwrap());
+    engine.update(ChessMove::from_str(tokens[tokens.len() - 1]).unwrap());
     None
 }
 
-pub fn move_to_uci(mv: Move) -> String {
-    String::from("bestmove ").add(mv.to_uci(CastlingMode::Standard).to_string().as_str())
+pub fn move_to_uci(mv: ChessMove) -> String {
+    String::from("bestmove ").add(mv.to_string().as_str())
 }

@@ -1,9 +1,7 @@
 use crate::minmax_engine::MinMaxEngine;
 use crate::io::output::send;
 use chess::Board;
-use shakmaty::Chess;
 use crate::io::uci;
-// use chess::{Board, MoveGen, Game};
 
 mod engine;
 mod minmax_engine;

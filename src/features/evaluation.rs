@@ -1,4 +1,4 @@
-use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square};
+use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square, EMPTY};
 
 use crate::io::output::send_info;
 
@@ -132,8 +132,23 @@ pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
     king_pos_val + queen_pos_val + rooks_pos_val + bishops_pos_val + knights_pos_val + pawns_pos_val
 }
 
-pub fn eval(board: &Board, debug: bool) -> f32 {
-    match board.status() {
+#[inline]
+pub fn status(board: &Board, any_legal_move: bool) -> BoardStatus {
+    match any_legal_move {
+        false => {
+            if *board.checkers() == EMPTY {
+                BoardStatus::Stalemate
+            } else {
+                BoardStatus::Checkmate
+            }
+        }
+        true => BoardStatus::Ongoing,
+    }
+}
+
+pub fn eval(board: &Board, any_legal_move: bool) -> f32 {
+    // match board.status() {
+    match status(board, any_legal_move) {
         BoardStatus::Checkmate => {
             if board.side_to_move() == Color::White {
                 -1e9 as f32
@@ -151,6 +166,23 @@ pub fn eval(board: &Board, debug: bool) -> f32 {
                 + get_position_cumulative_value(board, Color::White)
                 - get_position_cumulative_value(board, Color::Black)
         }
+    }
+}
+
+#[cfg(test)]
+mod eval_tests {
+    use std::str::FromStr;
+
+    use super::*;
+
+    #[test]
+    fn mate_in_two() {
+        // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
+        let board =
+            Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
+                .unwrap();
+        // println!("board: {:?}", board);
+        assert_eq!(eval(&board, true), -400.0)
     }
 }
 
