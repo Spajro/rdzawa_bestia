@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use crate::features::evaluation::{eval, status};
+use crate::features::evaluation::{eval, is_insufficient_material, status};
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiesence::quiescence;
@@ -7,7 +7,7 @@ use crate::features::time_management::default_time_manager;
 use crate::io::output::send_info;
 use crate::io::output::send_move;
 use arrayvec::ArrayVec;
-use chess::{Board, BoardBuilder, BoardStatus, ChessMove, Color, MoveGen};
+use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::time::{Duration, Instant};
 
@@ -83,14 +83,16 @@ impl MinMaxEngine {
 
         let moves_generator = MoveGen::new_legal(&pos);
         let any_legal_move = moves_generator.size_hint().0 > 0;
+        let insufficient_material = is_insufficient_material(&pos);
 
-        if status(&pos, any_legal_move) != BoardStatus::Ongoing {
+        let board_status = status(&pos, any_legal_move, insufficient_material);
+        if board_status != BoardStatus::Ongoing {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                eval(&pos, any_legal_move)
+                eval(&pos, board_status)
             } else {
-                -eval(&pos, any_legal_move)
+                -eval(&pos, board_status)
             };
             return Result {
                 score: evl,
@@ -246,12 +248,13 @@ mod mod_minmax_tests {
 
     #[test]
     fn minmax_depth8_inital_position() {
-        let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
-            .unwrap();
+        // let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
+        //     .unwrap();
+        let pos = Board::default();
         let mut engine = MinMaxEngine::new(pos);
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
-        let depth = 5;
+        let depth = 8;
         let result = engine.negamax(pos, depth, 2 * depth, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
 
