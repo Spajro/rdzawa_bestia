@@ -5,6 +5,8 @@ use chess::{BitBoard, Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPT
 use rand::seq::SliceRandom;
 use std::time::Instant;
 
+use super::evaluation::is_insufficient_material;
+
 pub fn quiescence(
     mut engine: &mut MinMaxEngine,
     pos: Board,
@@ -29,10 +31,14 @@ pub fn quiescence(
     }
 
     engine.evaluations_cnt += 1;
+    let insufficient_material = is_insufficient_material(&pos);
+
+    let board_status = status(&pos, any_legal_move, insufficient_material);
+
     let stand_pat = if pos.side_to_move() == Color::White {
-        eval(&pos, any_legal_move)
+        eval(&pos, board_status)
     } else {
-        -eval(&pos, any_legal_move)
+        -eval(&pos, board_status)
     };
 
     if stand_pat >= beta {
@@ -47,7 +53,7 @@ pub fn quiescence(
         alpha = stand_pat;
     }
 
-    if status(&pos, any_legal_move) != BoardStatus::Ongoing || qdepth == 0 {
+    if board_status != BoardStatus::Ongoing || qdepth == 0 {
         return Result {
             score: stand_pat,
             chosen_move: None,
