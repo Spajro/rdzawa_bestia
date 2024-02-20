@@ -78,7 +78,7 @@ pub fn quiescence(
         };
     }
 
-    move_order.sort_unstable_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
+    move_order.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
 
     let mut new_pos = pos.clone();
     for (_, next_move) in move_order {

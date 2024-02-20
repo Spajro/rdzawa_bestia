@@ -119,7 +119,7 @@ impl MinMaxEngine {
             .collect::<Vec<(f32, ChessMove)>>();
 
         // reverse sort
-        move_order.sort_unstable_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
+        move_order.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
         let mut best_move = move_order[0].1.clone();
 
         // send_info("len: ".to_string() + move_ordering.len().to_string().as_str());
@@ -139,13 +139,13 @@ impl MinMaxEngine {
                 };
             }
 
-            if result.score >= beta {
-                return Result {
-                    score: beta,
-                    chosen_move: Some(best_move),
-                    computed: true,
-                };
-            }
+            // if result.score >= beta {
+            //     return Result {
+            //         score: beta,
+            //         chosen_move: Some(best_move),
+            //         computed: true,
+            //     };
+            // }
 
             if result.score > alpha {
                 alpha = result.score;
@@ -246,12 +246,28 @@ mod mod_minmax_tests {
 
     #[test]
     fn minmax_depth8_inital_position() {
-        let mut engine = MinMaxEngine::new(Board::default());
+        let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
+            .unwrap();
+        let mut engine = MinMaxEngine::new(pos);
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
-        let depth = 8;
-        let result = engine.negamax(Board::default(), depth, 2 * depth, -1e9, 1e9, max_time);
+        let depth = 2;
+        let result = engine.negamax(pos, depth, 0, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
+
+        println!("best move: {:?}", result.chosen_move);
+        let m = result.chosen_move.unwrap();
+        println!(
+            "{:?} {:?}",
+            m.get_source().get_file(),
+            m.get_source().get_rank()
+        );
+        println!(
+            "{:?} {:?}",
+            m.get_dest().get_file(),
+            m.get_dest().get_rank()
+        );
+
         send_info(String::from("Score ") + &*result.score.to_string());
         println!("Evaluation_cnt={}", engine.evaluations_cnt);
 
@@ -275,7 +291,8 @@ mod mod_minmax_tests {
     fn test_quiescence() {
         let mut engine = MinMaxEngine::new(Board::default());
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
-        let pos = Board::default();
+        let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
+            .unwrap();
         quiescence(&mut engine, pos, 10, -1e9, 1e9, end_time);
     }
 
