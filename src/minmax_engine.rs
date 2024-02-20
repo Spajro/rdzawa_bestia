@@ -34,8 +34,8 @@ impl Engine for MinMaxEngine {
     }
 
     fn update(&mut self, mv: ChessMove) {
-        // let mov = mv.to_uci(CastlingMode::Standard).to_string();
-        // self.book = self.book.clone().update(mov);
+        let mov = mv.to_string();
+        self.book = self.book.clone().update(mov);
         self.pos = self.pos.make_move_new(mv);
     }
 
@@ -139,13 +139,13 @@ impl MinMaxEngine {
                 };
             }
 
-            // if result.score >= beta {
-            //     return Result {
-            //         score: beta,
-            //         chosen_move: Some(best_move),
-            //         computed: true,
-            //     };
-            // }
+            if result.score >= beta {
+                return Result {
+                    score: beta,
+                    chosen_move: Some(best_move),
+                    computed: true,
+                };
+            }
 
             if result.score > alpha {
                 alpha = result.score;
@@ -165,13 +165,13 @@ impl MinMaxEngine {
     }
 
     fn find_best_move(&mut self, time: u64) -> ChessMove {
-        // let book_result = self.book.clone().try_get_best(&self.pos);
-        // self.book = book_result.book;
-        // if book_result.mv.is_some() {
-        //     let mov = book_result.mv.unwrap();
-        //     self.pos.play_unchecked(&mov);
-        //     return mov;
-        // }
+        let book_result = self.book.clone().try_get_best();
+        self.book = book_result.book;
+        if book_result.mv.is_some() {
+            let mov = book_result.mv.unwrap();
+            self.pos = self.pos.make_move_new(mov);
+            return mov;
+        }
 
         let mut depth = 1;
         let mut estimation = 0.0;
@@ -251,8 +251,8 @@ mod mod_minmax_tests {
         let mut engine = MinMaxEngine::new(pos);
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
-        let depth = 2;
-        let result = engine.negamax(pos, depth, 0, -1e9, 1e9, max_time);
+        let depth = 5;
+        let result = engine.negamax(pos, depth, 2 * depth, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
 
         println!("best move: {:?}", result.chosen_move);
