@@ -1,5 +1,6 @@
 use crate::engine::Engine;
-use crate::features::evaluation::{eval, is_insufficient_material, status};
+use crate::features::board_utils::{is_insufficient_material, status};
+use crate::features::evaluation::eval;
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiesence::quiescence;
@@ -69,6 +70,7 @@ impl MinMaxEngine {
         pos: Board,
         depth: usize,
         qdepth: usize,
+        total_depth: usize,
         mut alpha: f32,
         beta: f32,
         end_time: Instant,
@@ -90,9 +92,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                eval(&pos, board_status)
+                eval(&pos, board_status, total_depth)
             } else {
-                -eval(&pos, board_status)
+                -eval(&pos, board_status, total_depth)
             };
             return Result {
                 score: evl,
@@ -102,7 +104,7 @@ impl MinMaxEngine {
         }
 
         if depth == 0 {
-            return quiescence(self, pos, qdepth, alpha, beta, end_time);
+            return quiescence(self, pos, qdepth, total_depth, alpha, beta, end_time);
         }
 
         let km_min_value = 1e6;
@@ -129,8 +131,15 @@ impl MinMaxEngine {
         for (value, next_move) in move_order {
             pos.make_move(next_move, &mut new_pos);
 
-            let mut result: Result =
-                self.negamax(new_pos, depth - 1, qdepth, -beta, -alpha, end_time);
+            let mut result: Result = self.negamax(
+                new_pos,
+                depth - 1,
+                qdepth,
+                total_depth + 1,
+                -beta,
+                -alpha,
+                end_time,
+            );
             result.score = -result.score;
 
             if result.computed == false {
@@ -192,15 +201,24 @@ impl MinMaxEngine {
 
             let mut result;
             if depth < 3 {
-                result = self.negamax(self.pos.clone(), depth, qdepth, neg_inf, pos_inf, end_time);
+                result = self.negamax(
+                    self.pos.clone(),
+                    depth,
+                    qdepth,
+                    0,
+                    neg_inf,
+                    pos_inf,
+                    end_time,
+                );
             } else {
-                result = self.negamax(self.pos.clone(), depth, qdepth, alpha, beta, end_time);
+                result = self.negamax(self.pos.clone(), depth, qdepth, 0, alpha, beta, end_time);
 
                 if result.score >= beta {
                     result = self.negamax(
                         self.pos.clone(),
                         depth,
                         qdepth,
+                        0,
                         result.score,
                         pos_inf,
                         end_time,
@@ -210,6 +228,7 @@ impl MinMaxEngine {
                         self.pos.clone(),
                         depth,
                         qdepth,
+                        0,
                         neg_inf,
                         result.score,
                         end_time,
@@ -217,8 +236,15 @@ impl MinMaxEngine {
                 }
 
                 if result.score <= alpha || result.score >= beta {
-                    result =
-                        self.negamax(self.pos.clone(), depth, qdepth, neg_inf, pos_inf, end_time);
+                    result = self.negamax(
+                        self.pos.clone(),
+                        depth,
+                        qdepth,
+                        0,
+                        neg_inf,
+                        pos_inf,
+                        end_time,
+                    );
                 }
             }
 
@@ -255,7 +281,7 @@ mod mod_minmax_tests {
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 8;
-        let result = engine.negamax(pos, depth, 2 * depth, -1e9, 1e9, max_time);
+        let result = engine.negamax(pos, depth, 2 * depth, 0, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
 
         println!("best move: {:?}", result.chosen_move);
@@ -296,7 +322,7 @@ mod mod_minmax_tests {
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
         let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
             .unwrap();
-        quiescence(&mut engine, pos, 10, -1e9, 1e9, end_time);
+        quiescence(&mut engine, pos, 10, 0, -1e9, 1e9, end_time);
     }
 
     #[test]
@@ -310,7 +336,7 @@ mod mod_minmax_tests {
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 1;
-        let result = engine.negamax(board, depth, 0, -1e9, 1e9, max_time);
+        let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time);
         send_info(String::from("Score ") + &*result.score.to_string());
         println!("Evaluation_cnt={}", engine.evaluations_cnt);
 
@@ -326,7 +352,7 @@ mod mod_minmax_tests {
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 7;
-        let result = engine.negamax(board, depth, 2 * depth, -1e9, 1e9, max_time);
+        let result = engine.negamax(board, depth, 2 * depth, 0, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
         send_info(String::from("Score ") + &*result.score.to_string());
         println!("Evaluation_cnt={}", engine.evaluations_cnt);

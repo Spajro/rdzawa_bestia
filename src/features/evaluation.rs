@@ -1,6 +1,4 @@
-use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square, ALL_SQUARES, EMPTY};
-
-use crate::io::output::send_info;
+use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square};
 
 #[rustfmt::skip]
 pub const KING_SQUARE_TABLE: [i32; 64] = [
@@ -132,74 +130,13 @@ pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
     king_pos_val + queen_pos_val + rooks_pos_val + bishops_pos_val + knights_pos_val + pawns_pos_val
 }
 
-#[inline]
-pub fn status(board: &Board, any_legal_move: bool, insufficient_material: bool) -> BoardStatus {
-    if !any_legal_move || insufficient_material {
-        if *board.checkers() != EMPTY && !any_legal_move {
-            return BoardStatus::Checkmate;
-        }
-        return BoardStatus::Stalemate;
-    }
-    return BoardStatus::Ongoing;
-}
-
-fn has_insufficient_material(board: &Board, color: Color) -> bool {
-    // Pawns, rooks and queens are never insufficient material.
-    let combined = board.color_combined(color);
-
-    if (combined
-        & (board.pieces(Piece::Pawn) | board.pieces(Piece::Rook) | board.pieces(Piece::Queen)))
-        != EMPTY
-    {
-        return false;
-    }
-
-    // Knights are only insufficient material if:
-    // (1) We do not have any other pieces, including more than one knight.
-    // (2) The opponent does not have pawns, knights, bishops or rooks.
-    //     These would allow self mate.
-    if (combined & board.pieces(Piece::Knight)) != EMPTY {
-        return combined.popcnt() <= 2
-            && (board.color_combined(!color)
-                & !board.pieces(Piece::King)
-                & !board.pieces(Piece::Queen))
-                == EMPTY;
-    }
-
-    // TODO: change both to const/static
-    let DARK_BITBOARD: BitBoard = ALL_SQUARES
-        .iter()
-        .enumerate()
-        .filter(|&(i, _)| i % 2 == 0)
-        .fold(EMPTY, |acc, (_, sq)| acc | BitBoard::from_square(*sq));
-    let LIGHT_BITBOARD = !DARK_BITBOARD;
-
-    // Bishops are only insufficient material if:
-    // (1) We do not have any other pieces, including bishops on the
-    //     opposite color.
-    // (2) The opponent does not have bishops on the opposite color,
-    //      pawns or knights. These would allow self mate.
-    if (combined & board.pieces(Piece::Bishop)) != EMPTY {
-        let same_color = (board.pieces(Piece::Bishop) & DARK_BITBOARD) == EMPTY
-            || (board.pieces(Piece::Bishop) & LIGHT_BITBOARD) == EMPTY;
-        return same_color && (board.pieces(Piece::Knight) | board.pieces(Piece::Pawn)) == EMPTY;
-    }
-
-    true
-}
-
-pub fn is_insufficient_material(board: &Board) -> bool {
-    return has_insufficient_material(board, Color::White)
-        && has_insufficient_material(board, Color::Black);
-}
-
-pub fn eval(board: &Board, board_status: BoardStatus) -> f32 {
+pub fn eval(board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
     match board_status {
         BoardStatus::Checkmate => {
             if board.side_to_move() == Color::White {
-                -1e9 as f32
+                -1e9 + 100.0 * depth as f32
             } else {
-                1e9 as f32
+                1e9 - 100.0 * depth as f32
             }
         }
 
@@ -228,7 +165,7 @@ mod eval_tests {
             Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
                 .unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing), -400.0)
+        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -400.0)
     }
 
     #[test]
@@ -236,7 +173,7 @@ mod eval_tests {
         // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
         let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing), -85.0)
+        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -85.0)
     }
 }
 
