@@ -3,7 +3,7 @@ use crate::features::board_utils::{is_insufficient_material, status};
 use crate::features::evaluation::eval;
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
-use crate::features::quiesence::quiescence;
+use crate::features::quiescence::quiescence;
 use crate::features::time_management::default_time_manager;
 use crate::io::output::send_info;
 use crate::io::output::send_move;
@@ -274,8 +274,6 @@ mod mod_minmax_tests {
 
     #[test]
     fn minmax_depth8_inital_position() {
-        // let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
-        //     .unwrap();
         let pos = Board::default();
         let mut engine = MinMaxEngine::new(pos);
         let start_time = Instant::now();
@@ -305,18 +303,6 @@ mod mod_minmax_tests {
     }
 
     #[test]
-    fn capture_moves() {
-        let pos = Board::default();
-        let mut moves_generator = MoveGen::new_legal(&pos);
-        assert_eq!(*pos.checkers(), EMPTY);
-        moves_generator.set_iterator_mask(*pos.color_combined(!pos.side_to_move()));
-
-        moves_generator.for_each(|m| {
-            println!("move: {}", m.to_string());
-        });
-    }
-
-    #[test]
     fn test_quiescence() {
         let mut engine = MinMaxEngine::new(Board::default());
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
@@ -324,40 +310,65 @@ mod mod_minmax_tests {
             .unwrap();
         quiescence(&mut engine, pos, 10, 0, -1e9, 1e9, end_time);
     }
+}
 
-    #[test]
-    fn mate_in_one() {
-        // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
-        let board =
-            Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
-                .unwrap();
+mod checkmate_tests {
+    use super::*;
+    use std::str::FromStr;
+    use test_case::test_case;
+
+    // Tests are from:
+    // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
+    // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
+    #[test_case(
+        "r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1",
+        1
+    )]
+    #[test_case("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1", 4)]
+    #[test_case("3rr1k1/pp3ppp/3b4/2p5/2Q5/6qP/PPP1B1P1/R1B2K1R b - - 0 1", 4)]
+    #[test_case("6k1/ppp2pp1/1q4b1/5rQp/8/1P6/PBP2PPP/3R2K1 w - - 0 1", 4)]
+    #[test_case("8/6k1/8/3b3Q/pP4P1/1P6/KP3r2/N4r2 b - - 0 1", 4)]
+    #[test_case("3r1rk1/pp3p1p/2b1n1pQ/q2pRN2/8/bP1B4/PB3PPP/2K4R w - - 0 1", 4)]
+    #[test_case("1k3r2/ppN3bp/3R4/8/1P2nQ2/P4pPq/5P2/6K1 w - - 0 1", 4)]
+    #[test_case("6rk/5Q1p/p1b2p1B/8/7N/8/PqP2PPP/6K1 w - - 0 1", 4)]
+    #[test_case("r1b2r1k/1ppq1p1p/p2p4/4n3/2BQ4/1P6/PB3P1P/6RK w - - 0 1", 4)]
+    #[test_case("3r2k1/1pQ3p1/p6p/8/4b3/PP2P1PP/5P1n/4K3 b - - 0 1", 4)]
+    #[test_case("1k6/2p3r1/p6p/1pQP4/3N2q1/8/P5P1/6K1 w - - 0 1", 4)]
+    #[test_case("R1Q5/1p3p2/1k2pb2/1B1p4/P7/P2P2P1/4rPK1/4q3 w - - 0 1", 4)]
+    #[test_case("1rr1q2k/p4p1p/8/3pPp2/3P3Q/5R2/P5PP/6K1 w - - 0 1", 4)]
+    #[test_case("6rk/5p1p/3p1p1Q/1p2qP2/4P3/1P2BR2/r5PP/6K1 w - - 0 1", 4)]
+    #[test_case("1k2r2r/2p3pp/Q2pqp2/2B5/2P5/1P3P2/5NPP/6K1 w - - 0 1", 4)]
+    #[test_case("r3r1k1/2RR4/1p5P/3p2p1/q7/3P1P2/1PPNB3/1K6 w - - 0 1", 4)]
+    #[test_case("R4nk1/4rpbp/1p4p1/5bPP/3QN3/1qP5/1P6/2K5 w - - 0 1", 4)]
+    #[test_case("6k1/r5r1/2bpNp1R/q1bN1P2/1p6/6P1/1PPQ4/1K6 w - - 0 1", 4)]
+    #[test_case("7r/1k2b3/6p1/4p3/1pBn1n2/1P6/5PNP/R2R2K1 b - - 0 1", 4)]
+    #[test_case("1r4r1/5ppk/pqp1p2p/4Nn1N/6QP/8/PPP2P2/2K3R1 w - - 0 1", 4)]
+    #[test_case("kr5r/p2R1ppp/2p2q2/4n3/8/1P1B2P1/P2Q1P1P/5RK1 w - - 0 1", 4)]
+    fn checkmate(fen: &str, moves_to_mate: usize) {
+        let expected_depth = moves_to_mate * 2 - 1;
+        let board = Board::from_str(fen).unwrap();
 
         let mut engine = MinMaxEngine::new(board);
-        let start_time = Instant::now();
-        let max_time = start_time.add(Duration::from_secs(60 * 10));
-        let depth = 1;
-        let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time);
-        send_info(String::from("Score ") + &*result.score.to_string());
-        println!("Evaluation_cnt={}", engine.evaluations_cnt);
 
-        assert_eq!(result.score, 1e9);
-    }
+        for depth in 1..(expected_depth + 1) {
+            engine.evaluations_cnt = 0;
+            let start_time = Instant::now();
+            let max_time = start_time.add(Duration::from_secs(60 * 10));
 
-    #[test]
-    fn mate_in_four() {
-        // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
-        let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
+            // quiescence has to be disabled!
+            let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time);
 
-        let mut engine = MinMaxEngine::new(board);
-        let start_time = Instant::now();
-        let max_time = start_time.add(Duration::from_secs(60 * 10));
-        let depth = 7;
-        let result = engine.negamax(board, depth, 2 * depth, 0, -1e9, 1e9, max_time);
-        let duration = Instant::now().duration_since(start_time);
-        send_info(String::from("Score ") + &*result.score.to_string());
-        println!("Evaluation_cnt={}", engine.evaluations_cnt);
-        println!("Duration: {:?}", duration);
+            let duration = Instant::now().duration_since(start_time);
+            println!(
+                "Depth= {} Score={} Evaluation_cnt= {} Duration= {:?}",
+                depth, result.score, engine.evaluations_cnt, duration
+            );
 
-        assert_eq!(result.score, 1e9);
+            if depth < expected_depth {
+                assert!(result.score.abs() < 1e8);
+            } else {
+                assert!(result.score > 1e8);
+            }
+        }
     }
 }
