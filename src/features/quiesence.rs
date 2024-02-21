@@ -1,16 +1,14 @@
-use crate::features::evaluation::{eval, status};
+use crate::features::board_utils::{is_insufficient_material, status};
+use crate::features::evaluation::eval;
 use crate::minmax_engine::{MinMaxEngine, Result};
-use arrayvec::ArrayVec;
-use chess::{BitBoard, Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPTY};
-use rand::seq::SliceRandom;
+use chess::{Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPTY};
 use std::time::Instant;
-
-use super::evaluation::is_insufficient_material;
 
 pub fn quiescence(
     mut engine: &mut MinMaxEngine,
     pos: Board,
     qdepth: usize,
+    total_depth: usize,
     mut alpha: f32,
     beta: f32,
     end_time: Instant,
@@ -36,9 +34,9 @@ pub fn quiescence(
     let board_status = status(&pos, any_legal_move, insufficient_material);
 
     let stand_pat = if pos.side_to_move() == Color::White {
-        eval(&pos, board_status)
+        eval(&pos, board_status, total_depth)
     } else {
-        -eval(&pos, board_status)
+        -eval(&pos, board_status, total_depth)
     };
 
     if stand_pat >= beta {
@@ -90,8 +88,15 @@ pub fn quiescence(
     for (_, next_move) in move_order {
         pos.make_move(next_move, &mut new_pos);
 
-        let mut result: Result =
-            quiescence(&mut engine, new_pos, qdepth - 1, -beta, -alpha, end_time);
+        let mut result: Result = quiescence(
+            &mut engine,
+            new_pos,
+            qdepth - 1,
+            total_depth + 1,
+            -beta,
+            -alpha,
+            end_time,
+        );
         result.score = -result.score;
 
         if result.computed == false {
