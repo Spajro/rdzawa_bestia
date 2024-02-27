@@ -8,6 +8,7 @@ mod minmax_engine;
 
 mod features;
 mod io;
+mod random_engine;
 
 fn main() {
     let mut input = String::new();
