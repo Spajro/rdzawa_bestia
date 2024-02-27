@@ -27,14 +27,17 @@ pub struct MinMaxEngine {
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
+    pub half_moves: u32,
 }
 
 impl Engine for MinMaxEngine {
     fn start(&mut self, time: u64) {
+        self.half_moves += 1;
         send_move(self.find_best_move(time))
     }
 
     fn stop(&mut self) {
+        self.half_moves += 1;
         send_move(self.find_best_move(0))
     }
 
@@ -75,6 +78,7 @@ impl MinMaxEngine {
             evaluations_cnt: 0,
             book: OpeningBook::new(),
             transposition_table: TranspositionTable::new(),
+            half_moves: 0,
         }
     }
 
@@ -100,11 +104,11 @@ impl MinMaxEngine {
         if transposition_entry.is_some() {
             send_info(String::from("[TT] Table hit"));
             let entry = transposition_entry.unwrap();
-            return Result{
+            return Result {
                 score: entry.score,
                 chosen_move: Some(entry.mv),
                 computed: true,
-            }
+            };
         }
 
         let moves_generator = MoveGen::new_legal(&pos);
@@ -175,7 +179,7 @@ impl MinMaxEngine {
             }
 
             if result.score >= beta {
-                self.transposition_table.insert(&pos, beta, best_move.clone(),0);
+                self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves);
                 return Result {
                     score: beta,
                     chosen_move: Some(best_move),
