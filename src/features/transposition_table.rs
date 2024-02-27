@@ -22,6 +22,7 @@ pub struct TableEntry {
     pub key: FullHash,
     pub mv: ChessMove,
     pub score: f32,
+    pub depth: usize,
 }
 
 impl TranspositionTable {
@@ -32,7 +33,7 @@ impl TranspositionTable {
             max_size: 10000,
         }
     }
-    pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, halfmoves: u32) {
+    pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, halfmoves: u32, depth: usize) {
         send_info("[TT] insert: ".to_string() + &*score.to_string() + " | " + &*mv.to_string());
         if self.max_size <= self.map.len() {
             self.remove()
@@ -45,6 +46,7 @@ impl TranspositionTable {
             key,
             mv,
             score,
+            depth,
         };
 
         self.map.insert(Self::get_key_part(key), entry);
