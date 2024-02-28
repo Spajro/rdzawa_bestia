@@ -23,10 +23,6 @@ impl Engine for RandomEngine {
     fn restart(&mut self) {
         self.pos = Board::default();
     }
-
-    fn get_status(&self) -> Board {
-        self.pos.clone()
-    }
 }
 
 impl RandomEngine {
