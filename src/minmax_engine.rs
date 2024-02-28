@@ -43,10 +43,6 @@ impl Engine for MinMaxEngine {
     fn restart(&mut self) {
         self.pos = Board::default();
     }
-
-    fn get_status(&self) -> Board {
-        self.pos.clone()
-    }
 }
 
 impl MinMaxEngine {
@@ -321,8 +317,8 @@ mod checkmate_tests {
     // https://www.chess.com/forum/view/more-puzzles/hardest-mate-in-1-puzzles
     // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
     #[test_case(
-        "r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1",
-        1
+    "r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1",
+    1
     )]
     #[test_case("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1", 4)]
     #[test_case("3rr1k1/pp3ppp/3b4/2p5/2Q5/6qP/PPP1B1P1/R1B2K1R b - - 0 1", 4)]
