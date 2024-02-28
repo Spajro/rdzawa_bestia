@@ -14,21 +14,7 @@ pub struct UciResult {
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine, next_color: Color) -> UciResult {
     let tokens: Vec<&str> = uci.split(' ').collect();
-    let mut time: Option<u64> = None;
-    for i in (1..tokens.len()).step_by(2) {
-        if tokens[i] == "movetime" {
-            time = Some(tokens[i + 1].parse().unwrap());
-            break;
-        }
-        if tokens[i] == "wtime" && next_color == White {*
-            time = Some(tokens[i + 1].parse().unwrap());
-            break;
-        }
-        if tokens[i] == "btime" && next_color == Black {
-            time = Some(tokens[i + 1].parse().unwrap());
-            break;
-        }
-    }
+    let mut time: Option<u64> = get_time(&tokens, next_color);
     match tokens[0] {
         "uci" => start(),
         "isready" => is_ready(),
@@ -39,6 +25,21 @@ pub fn handle_uci(uci: &String, engine: &mut dyn Engine, next_color: Color) -> U
         "quit" => quit(),
         &_ => UciResult { msg: Some("Unknown command |".to_string() + uci + "|"), next_color: next_color }
     }
+}
+
+fn get_time(tokens: &Vec<&str>, next_color: Color) -> Option<u64> {
+    for i in (1..tokens.len()).step_by(2) {
+        if tokens[i] == "movetime" {
+            return Some(tokens[i + 1].parse().unwrap());
+        }
+        if tokens[i] == "wtime" && next_color == White {
+            return Some(tokens[i + 1].parse().unwrap());
+        }
+        if tokens[i] == "btime" && next_color == Black {
+            return Some(tokens[i + 1].parse().unwrap());
+        }
+    }
+    None
 }
 
 fn start() -> UciResult {
