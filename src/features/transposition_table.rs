@@ -8,7 +8,11 @@ type PartHash = u32;
 type FullHash = u64;
 
 fn high(hash: FullHash) -> PartHash {
-    return (hash >> 32) as u32;
+    (hash >> 32) as u32
+}
+
+fn low(hash: FullHash) -> PartHash {
+    hash as PartHash
 }
 
 pub struct TranspositionTable {
@@ -34,7 +38,7 @@ impl TranspositionTable {
         }
     }
     pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, halfmoves: u32, depth: usize) {
-        send_info("[TT] insert: ".to_string() + &*score.to_string() + " | " + &*mv.to_string());
+        //send_info("[TT] insert: ".to_string() + &*score.to_string() + " | " + &*mv.to_string());
         if self.max_size <= self.map.len() {
             self.remove()
         }
