@@ -100,11 +100,11 @@ impl MinMaxEngine {
             };
         }
 
-        let transposition_entry = self.transposition_table.find(&self.pos);
+        let transposition_entry = self.transposition_table.find(&pos);
         if transposition_entry.is_some() {
             let entry = transposition_entry.unwrap();
             if entry.depth >= depth {
-                send_info(String::from("[TT] Table hit"));
+                //send_info(String::from("[TT] Table hit"));
                 return Result {
                     score: entry.score,
                     chosen_move: Some(entry.mv),
@@ -198,7 +198,7 @@ impl MinMaxEngine {
                 }
             }
         }
-
+        self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves, depth);
         return Result {
             score: alpha,
             chosen_move: Some(best_move),
