@@ -10,7 +10,9 @@ use crate::io::output::send_move;
 use arrayvec::ArrayVec;
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
+use crate::io::uci::Fen;
 
 pub struct Result {
     pub(crate) score: f32,
@@ -34,10 +36,19 @@ impl Engine for MinMaxEngine {
         send_move(self.find_best_move(0))
     }
 
-    fn update(&mut self, mv: ChessMove) {
-        let mov = mv.to_string();
-        self.book = self.book.clone().update(mov);
-        self.pos = self.pos.make_move_new(mv);
+    fn update(&mut self, fen: Fen, moves: Vec<ChessMove>) {
+        match fen {
+            Fen::FEN(fen) => {
+                self.pos = Board::from_str(&fen).unwrap();
+                self.book = OpeningBook::empty()
+            }
+            Fen::START => {
+                let mv = moves.last().unwrap();
+                let mov = mv.to_string();
+                self.book = self.book.clone().update(mov);
+                self.pos = self.pos.make_move_new(*mv);
+            }
+        }
     }
 
     fn restart(&mut self) {
@@ -265,7 +276,6 @@ impl MinMaxEngine {
 #[cfg(test)]
 mod mod_minmax_tests {
     use super::*;
-    use chess::EMPTY;
     use std::str::FromStr;
 
     #[test]

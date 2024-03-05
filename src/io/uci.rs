@@ -6,10 +6,16 @@ use std::process;
 use std::str::FromStr;
 use chess::Color::White;
 use Color::Black;
+use crate::io::uci::Fen::{FEN, START};
 
 pub struct UciResult {
     pub msg: Option<String>,
     pub next_color: Color,
+}
+
+pub enum Fen {
+    FEN(Box<str>),
+    START,
 }
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine, next_color: Color) -> UciResult {
@@ -86,13 +92,20 @@ fn quit() -> UciResult {
 
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>, next_color: Color) -> UciResult {
     send_info("DEBUG ".to_string() + tokens[tokens.len() - 1]);
-    if tokens.len() == 2 && tokens[1] == "startpos" {
+    let position = tokens[1];
+    if tokens.len() == 2 && position == "startpos" {
         return UciResult {
             msg: None,
             next_color: swap_color(next_color),
         };
     }
-    engine.update(ChessMove::from_str(tokens[tokens.len() - 1]).unwrap());
+
+    let moves = tokens.iter().skip(2).map(|s| ChessMove::from_str(s).unwrap()).collect();
+    let fen = match position {
+        "startpos" => START,
+        _ => FEN(Box::from(position))
+    };
+    engine.update(fen, moves);
     UciResult {
         msg: None,
         next_color: swap_color(next_color),
