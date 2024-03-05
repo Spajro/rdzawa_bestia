@@ -16,7 +16,7 @@ pub struct QueryResult {
 }
 
 impl OpeningBook {
-    pub fn new() -> OpeningBook {
+    pub fn new() -> Self {
         return if Path::new("book.json").exists() {
             let json = fs::read_to_string("book.json").unwrap();
             let book = json::parse(&*json).unwrap();
@@ -26,7 +26,13 @@ impl OpeningBook {
         };
     }
 
-    pub fn update(self, mv: String) -> OpeningBook {
+    pub fn empty() -> Self{
+        return OpeningBook{
+            node: None,
+        }
+    }
+
+    pub fn update(self, mv: String) -> Self {
         if self.node.is_none() {
             send_info("Book empty: ".to_string() + &*mv);
             return OpeningBook { node: None };
