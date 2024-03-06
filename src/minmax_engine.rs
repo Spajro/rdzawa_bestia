@@ -11,6 +11,7 @@ use arrayvec::ArrayVec;
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::time::{Duration, Instant};
+use crate::features::transposition_table::TranspositionTable;
 
 pub struct Result {
     pub(crate) score: f32,
@@ -23,18 +24,23 @@ pub struct MinMaxEngine {
     pub killer_moves: ArrayVec<KillerMoves<{ Self::KILLER_MOVES_SIZE }>, { Self::MAX_DEPTH }>,
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
+    pub transposition_table: TranspositionTable,
+    pub half_moves: u32,
 }
 
 impl Engine for MinMaxEngine {
     fn start(&mut self, time: u64) {
+        self.half_moves += 1;
         send_move(self.find_best_move(time))
     }
 
     fn stop(&mut self) {
+        self.half_moves += 1;
         send_move(self.find_best_move(0))
     }
 
     fn update(&mut self, mv: ChessMove) {
+        self.half_moves += 1;
         let mov = mv.to_string();
         self.book = self.book.clone().update(mov);
         self.pos = self.pos.make_move_new(mv);
@@ -58,6 +64,8 @@ impl MinMaxEngine {
             killer_moves: km,
             evaluations_cnt: 0,
             book: OpeningBook::new(),
+            transposition_table: TranspositionTable::new(),
+            half_moves: 0,
         }
     }
 
@@ -77,6 +85,19 @@ impl MinMaxEngine {
                 chosen_move: None,
                 computed: false,
             };
+        }
+
+        let transposition_entry = self.transposition_table.find(&pos);
+        if transposition_entry.is_some() {
+            let entry = transposition_entry.unwrap();
+            if entry.depth >= depth {
+                //send_info(String::from("[TT] Table hit"));
+                return Result {
+                    score: entry.score,
+                    chosen_move: Some(entry.mv),
+                    computed: true,
+                };
+            }
         }
 
         let moves_generator = MoveGen::new_legal(&pos);
@@ -147,6 +168,7 @@ impl MinMaxEngine {
             }
 
             if result.score >= beta {
+                self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves, depth);
                 return Result {
                     score: beta,
                     chosen_move: Some(best_move),
@@ -163,7 +185,7 @@ impl MinMaxEngine {
                 }
             }
         }
-
+        self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves, depth);
         return Result {
             score: alpha,
             chosen_move: Some(best_move),
