@@ -1,5 +1,4 @@
 use crate::engine::Engine;
-use crate::io::output::send_info;
 use chess::{ChessMove, Color};
 use std::ops::Add;
 use std::process;
@@ -13,9 +12,15 @@ pub struct UciResult {
     pub next_color: Color,
 }
 
+#[derive(PartialEq)]
 pub enum Fen {
     FEN(Box<str>),
     START,
+}
+
+struct ParseResult {
+    fen: Fen,
+    moves: Vec<ChessMove>,
 }
 
 pub fn handle_uci(uci: &String, engine: &mut dyn Engine, next_color: Color) -> UciResult {
@@ -91,24 +96,36 @@ fn quit() -> UciResult {
 }
 
 fn update(engine: &mut dyn Engine, tokens: Vec<&str>, next_color: Color) -> UciResult {
-    send_info("DEBUG ".to_string() + tokens[tokens.len() - 1]);
-    let position = tokens[1];
-    if tokens.len() == 2 && position == "startpos" {
-        return UciResult {
-            msg: None,
-            next_color: swap_color(next_color),
-        };
-    }
-
-    let moves = tokens.iter().skip(2).map(|s| ChessMove::from_str(s).unwrap()).collect();
-    let fen = match position {
-        "startpos" => START,
-        _ => FEN(Box::from(position))
-    };
-    engine.update(fen, moves);
+    let parsed = parse_update_tokens(tokens);
+    engine.update(parsed.fen, parsed.moves);
     UciResult {
         msg: None,
         next_color: swap_color(next_color),
+    }
+}
+
+fn parse_update_tokens(tokens: Vec<&str>) -> ParseResult {
+    let mut i = tokens.len() - 1;
+    let mut moves = Vec::new();
+    while i > 1 {
+        let mv = ChessMove::from_str(tokens[i]);
+        if mv.is_ok() {
+            moves.push(mv.unwrap())
+        } else {
+            break;
+        }
+        i -= 1;
+    }
+    let fen_string = tokens[1..=i].join(" ");
+    let fen = if fen_string == "startpos" {
+        START
+    } else {
+        FEN(Box::from(fen_string.clone()))
+    };
+    moves.reverse();
+    ParseResult {
+        fen,
+        moves,
     }
 }
 
