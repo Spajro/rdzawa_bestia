@@ -40,7 +40,10 @@ impl Engine for MinMaxEngine {
         match fen {
             Fen::FEN(fen) => {
                 self.pos = Board::from_str(&fen).unwrap();
-                self.book = OpeningBook::empty()
+                self.book = OpeningBook::empty();
+                for mv in moves {
+                    self.pos = self.pos.make_move_new(mv)
+                }
             }
             Fen::START => {
                 let mv = moves.last().unwrap();
