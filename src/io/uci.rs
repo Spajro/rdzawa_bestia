@@ -14,7 +14,7 @@ pub struct UciResult {
 
 #[derive(PartialEq)]
 pub enum Fen {
-    FEN(Box<str>),
+    FEN(String),
     START,
 }
 
@@ -120,7 +120,7 @@ fn parse_update_tokens(tokens: Vec<&str>) -> ParseResult {
     let fen = if fen_string == "startpos" {
         START
     } else {
-        FEN(Box::from(fen_string.clone()))
+        FEN(fen_string)
     };
     moves.reverse();
     ParseResult {
