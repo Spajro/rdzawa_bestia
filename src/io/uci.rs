@@ -5,7 +5,7 @@ use std::process;
 use std::str::FromStr;
 use chess::Color::White;
 use Color::Black;
-use crate::io::uci::Fen::{FEN, START};
+use crate::io::uci::Position::{FEN, START};
 
 pub struct UciResult {
     pub msg: Option<String>,
@@ -13,13 +13,13 @@ pub struct UciResult {
 }
 
 #[derive(PartialEq)]
-pub enum Fen {
+pub enum Position {
     FEN(String),
     START,
 }
 
 struct ParseResult {
-    fen: Fen,
+    fen: Position,
     moves: Vec<ChessMove>,
 }
 
