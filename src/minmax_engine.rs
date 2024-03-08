@@ -12,7 +12,7 @@ use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
-use crate::io::uci::Fen;
+use crate::io::uci::Position;
 
 pub struct Result {
     pub(crate) score: f32,
@@ -36,16 +36,16 @@ impl Engine for MinMaxEngine {
         send_move(self.find_best_move(0))
     }
 
-    fn update(&mut self, fen: Fen, moves: Vec<ChessMove>) {
+    fn update(&mut self, fen: Position, moves: Vec<ChessMove>) {
         match fen {
-            Fen::FEN(fen) => {
+            Position::FEN(fen) => {
                 self.pos = Board::from_str(&fen).unwrap();
                 self.book = OpeningBook::empty();
                 for mv in moves {
                     self.pos = self.pos.make_move_new(mv)
                 }
             }
-            Fen::START => {
+            Position::START => {
                 let mv = moves.last().unwrap();
                 let mov = mv.to_string();
                 self.book = self.book.clone().update(mov);

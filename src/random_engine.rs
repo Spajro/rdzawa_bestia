@@ -2,7 +2,7 @@ use chess::{Board, ChessMove, MoveGen};
 use crate::engine::{Engine};
 use crate::io::output::send_move;
 use rand::seq::SliceRandom;
-use crate::io::uci::Fen;
+use crate::io::uci::Position;
 
 pub struct RandomEngine {
     pub pos: Board,
@@ -17,7 +17,7 @@ impl Engine for RandomEngine {
         send_move(self.next_move())
     }
 
-    fn update(&mut self, fen: Fen, moves: Vec<ChessMove>) {
+    fn update(&mut self, fen: Position, moves: Vec<ChessMove>) {
         self.pos = self.pos.make_move_new(*moves.last().unwrap());
     }
 
