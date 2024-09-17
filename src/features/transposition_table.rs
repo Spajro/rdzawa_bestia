@@ -23,11 +23,19 @@ pub struct TranspositionTable {
 }
 
 #[derive(Clone)]
+pub enum EntryType {
+    EXACT,
+    LOWER,
+    UPPER,
+}
+
+#[derive(Clone)]
 pub struct TableEntry {
     pub key: FullHash,
-    pub mv: ChessMove,
+    pub mv: Option<ChessMove>,
     pub score: f32,
     pub depth: usize,
+    pub entry_type: EntryType,
 }
 
 impl TranspositionTable {
@@ -35,46 +43,25 @@ impl TranspositionTable {
         TranspositionTable {
             map: HashMap::new(),
             keys: Vec::new(),
-            max_size: 10000,
+            max_size: 10_usize.pow(6),
             rand: rand::thread_rng(),
         }
     }
-    pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, depth: usize) {
-        //send_info("[TT] insert: ".to_string() + &*score.to_string() + " | " + &*mv.to_string());
+    pub fn insert(&mut self, pos: &Board, score: f32, mv: Option<ChessMove>, depth: usize, entry_type: EntryType) {
         if self.max_size <= self.map.len() {
             self.remove();
         }
 
-
         let key = Self::get_key(pos);
-
-        let entry = TableEntry {
-            key,
-            mv,
-            score,
-            depth,
-        };
-
-        self.map.insert(Self::get_key_part(key), entry);
+        self.map.insert(Self::get_key_part(key), TableEntry { key, mv, score, depth, entry_type });
         self.keys.push(Self::get_key_part(key));
     }
 
     pub fn find(&self, pos: &Board) -> Option<TableEntry> {
         let key = Self::get_key(pos);
-
-        let table_entry = self.map.get(&Self::get_key_part(key));
-
-        if table_entry.is_none() {
-            return None;
-        }
-
-        let entry = table_entry.unwrap();
-
-        if key != entry.key {
-            return None;
-        }
-
-        table_entry.map(|e| e.clone())
+        self.map.get(&Self::get_key_part(key))
+            .filter(|e| e.key != key)
+            .map(|e| e.clone())
     }
 
     fn get_key(pos: &Board) -> FullHash {
