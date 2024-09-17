@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use chess::{Board, ChessMove};
-use priority_queue::PriorityQueue;
-use crate::io::output::send_info;
+use rand::Rng;
+use rand::rngs::ThreadRng;
 
 
 type PartHash = u32;
@@ -17,8 +17,9 @@ fn low(hash: FullHash) -> PartHash {
 
 pub struct TranspositionTable {
     map: HashMap<PartHash, TableEntry>,
-    replacement_queue: PriorityQueue<PartHash, u32>,
+    keys: Vec<PartHash>,
     max_size: usize,
+    rand: ThreadRng,
 }
 
 #[derive(Clone)]
@@ -33,14 +34,15 @@ impl TranspositionTable {
     pub fn new() -> Self {
         TranspositionTable {
             map: HashMap::new(),
-            replacement_queue: PriorityQueue::new(),
+            keys: Vec::new(),
             max_size: 10000,
+            rand: rand::thread_rng(),
         }
     }
-    pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, halfmoves: u32, depth: usize) {
+    pub fn insert(&mut self, pos: &Board, score: f32, mv: ChessMove, depth: usize) {
         //send_info("[TT] insert: ".to_string() + &*score.to_string() + " | " + &*mv.to_string());
         if self.max_size <= self.map.len() {
-            self.remove()
+            self.remove();
         }
 
 
@@ -54,7 +56,7 @@ impl TranspositionTable {
         };
 
         self.map.insert(Self::get_key_part(key), entry);
-        self.replacement_queue.push(Self::get_key_part(key), u32::MAX - halfmoves);
+        self.keys.push(Self::get_key_part(key));
     }
 
     pub fn find(&self, pos: &Board) -> Option<TableEntry> {
@@ -83,14 +85,8 @@ impl TranspositionTable {
         return high(key);
     }
     fn remove(&mut self) {
-        let first_entry = self.replacement_queue.pop();
-
-        if first_entry.is_none() {
-            return;
-        }
-
-        let queue_entry = first_entry.unwrap();
-
-        self.map.remove(&queue_entry.0);
+        let index = self.rand.gen_range(0..self.max_size);
+        let hash_to_remove = self.keys.swap_remove(index);
+        self.map.remove(&hash_to_remove);
     }
 }
