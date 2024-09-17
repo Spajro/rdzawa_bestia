@@ -181,7 +181,7 @@ impl MinMaxEngine {
             }
 
             if result.score >= beta {
-                self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves, depth);
+                self.transposition_table.insert(&pos, beta, best_move.clone(), depth);
                 return Result {
                     score: beta,
                     chosen_move: Some(best_move),
@@ -198,7 +198,7 @@ impl MinMaxEngine {
                 }
             }
         }
-        self.transposition_table.insert(&pos, beta, best_move.clone(), self.half_moves, depth);
+        self.transposition_table.insert(&pos, beta, best_move.clone(), depth);
         return Result {
             score: alpha,
             chosen_move: Some(best_move),
