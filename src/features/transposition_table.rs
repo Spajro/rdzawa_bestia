@@ -43,7 +43,7 @@ impl TranspositionTable {
         TranspositionTable {
             map: HashMap::new(),
             keys: Vec::new(),
-            max_size: 10_usize.pow(6),
+            max_size: 10_usize.pow(7),
             rand: rand::thread_rng(),
         }
     }
