@@ -13,7 +13,7 @@ use std::ops::Add;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
 use crate::io::uci::Position;
-use crate::features::transposition_table::TranspositionTable;
+use crate::features::transposition_table::{EntryType, TranspositionTable};
 
 pub struct Result {
     pub(crate) score: f32,
@@ -89,7 +89,7 @@ impl MinMaxEngine {
         qdepth: usize,
         total_depth: usize,
         mut alpha: f32,
-        beta: f32,
+        mut beta: f32,
         end_time: Instant,
     ) -> Result {
         if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
@@ -104,12 +104,15 @@ impl MinMaxEngine {
         if transposition_entry.is_some() {
             let entry = transposition_entry.unwrap();
             if entry.depth >= depth {
-                //send_info(String::from("[TT] Table hit"));
-                return Result {
-                    score: entry.score,
-                    chosen_move: Some(entry.mv),
-                    computed: true,
-                };
+                match entry.entry_type {
+                    EntryType::EXACT => return Result {
+                        score: entry.score,
+                        chosen_move: entry.mv,
+                        computed: true,
+                    },
+                    EntryType::LOWER => beta = beta.min(entry.score),
+                    EntryType::UPPER => alpha = alpha.max(alpha),
+                }
             }
         }
 
@@ -126,6 +129,7 @@ impl MinMaxEngine {
             } else {
                 -eval(&pos, board_status, total_depth)
             };
+            self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
                 score: evl,
                 chosen_move: None,
@@ -181,7 +185,7 @@ impl MinMaxEngine {
             }
 
             if result.score >= beta {
-                self.transposition_table.insert(&pos, beta, best_move.clone(), depth);
+                self.transposition_table.insert(&pos, beta, Some(best_move.clone()), depth, EntryType::LOWER);
                 return Result {
                     score: beta,
                     chosen_move: Some(best_move),
@@ -198,7 +202,7 @@ impl MinMaxEngine {
                 }
             }
         }
-        self.transposition_table.insert(&pos, beta, best_move.clone(), depth);
+        self.transposition_table.insert(&pos, alpha, Some(best_move.clone()), depth, EntryType::UPPER);
         return Result {
             score: alpha,
             chosen_move: Some(best_move),
