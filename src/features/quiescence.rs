@@ -1,8 +1,8 @@
 use crate::features::board_utils::{is_insufficient_material, status};
-use crate::features::evaluation::eval;
 use crate::minmax_engine::{MinMaxEngine, Result};
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen, Piece, EMPTY};
 use std::time::Instant;
+use crate::features::Evaluation;
 
 pub fn quiescence(
     mut engine: &mut MinMaxEngine,
@@ -34,9 +34,9 @@ pub fn quiescence(
     let board_status = status(&pos, any_legal_move, insufficient_material);
 
     let stand_pat = if pos.side_to_move() == Color::White {
-        eval(&pos, board_status, total_depth)
+        engine.evaluator.eval(&pos, board_status, total_depth)
     } else {
-        -eval(&pos, board_status, total_depth)
+        -engine.evaluator.eval(&pos, board_status, total_depth)
     };
 
     if stand_pat >= beta {

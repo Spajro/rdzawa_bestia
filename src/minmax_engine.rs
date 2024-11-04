@@ -1,6 +1,6 @@
 use crate::engine::Engine;
 use crate::features::board_utils::{is_insufficient_material, status};
-use crate::features::evaluation::eval;
+use crate::features::Evaluation;
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiescence::quiescence;
@@ -12,14 +12,15 @@ use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use crate::features::evaluation::Evaluator;
 use crate::io::uci::Position;
 use crate::features::transposition_table::{EntryType, TranspositionTable};
 use crate::io::options::Options;
 
 pub struct Result {
-    pub(crate) score: f32,
-    pub(crate) chosen_move: Option<ChessMove>,
-    pub(crate) computed: bool,
+    pub score: f32,
+    pub chosen_move: Option<ChessMove>,
+    pub computed: bool,
 }
 
 pub struct MinMaxEngine {
@@ -28,6 +29,7 @@ pub struct MinMaxEngine {
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
+    pub evaluator:Evaluator,
 }
 
 impl Engine for MinMaxEngine {
@@ -98,6 +100,7 @@ impl MinMaxEngine {
             evaluations_cnt: 0,
             book: OpeningBook::new(options.get_value("openings".to_string()).unwrap_or(&"book.json".to_string())),
             transposition_table: TranspositionTable::new(),
+            evaluator:Evaluator::new(),
         }
     }
 
@@ -144,9 +147,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                eval(&pos, board_status, total_depth)
+                self.evaluator.eval(&pos, board_status, total_depth)
             } else {
-                -eval(&pos, board_status, total_depth)
+                -self.evaluator.eval(&pos, board_status, total_depth)
             };
             self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
