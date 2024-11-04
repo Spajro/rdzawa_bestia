@@ -8,6 +8,7 @@ pub mod opening_book;
 pub mod quiescence;
 pub mod time_management;
 pub mod transposition_table;
+pub mod neural_evaluation;
 
 pub trait Evaluation {
     fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32;
