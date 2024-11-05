@@ -1,11 +1,6 @@
-use chess::Board;
-use chess::Color::White;
-use crate::io::options::Options;
-
 use crate::io::output::send;
 use crate::io::uci;
 use crate::io::uci::State;
-use crate::minmax_engine::MinMaxEngine;
 
 mod engine;
 mod minmax_engine;
@@ -16,11 +11,7 @@ mod random_engine;
 
 fn main() {
     let mut input = String::new();
-    let mut state = State {
-        engine: Box::new(MinMaxEngine::new(Board::default())),
-        options: Options::new(),
-        next_color: White,
-    };
+    let mut state = State::new();
     let stdin = std::io::stdin();
     loop {
         stdin.read_line(&mut input).expect("panic message");

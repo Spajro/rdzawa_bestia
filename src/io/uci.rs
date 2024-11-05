@@ -1,5 +1,5 @@
 use crate::engine::Engine;
-use chess::{ChessMove, Color};
+use chess::{Board, ChessMove, Color};
 use std::ops::Add;
 use std::process;
 use std::str::FromStr;
@@ -7,6 +7,7 @@ use chess::Color::White;
 use Color::Black;
 use crate::io::options::Options;
 use crate::io::uci::Position::{FEN, START};
+use crate::minmax_engine::MinMaxEngine;
 
 pub struct State {
     pub engine: Box<dyn Engine>,
@@ -158,6 +159,16 @@ impl UciResult {
     pub fn with(msg: String) -> Self {
         Self {
             msg: Some(msg),
+        }
+    }
+}
+
+impl State {
+    pub fn new() -> Self {
+        Self {
+            engine: Box::new(MinMaxEngine::new(Board::default())),
+            options: Options::new(),
+            next_color: White,
         }
     }
 }
