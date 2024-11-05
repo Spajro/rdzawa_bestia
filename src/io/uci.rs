@@ -5,10 +5,12 @@ use std::process;
 use std::str::FromStr;
 use chess::Color::White;
 use Color::Black;
+use crate::io::options::Options;
 use crate::io::uci::Position::{FEN, START};
 
 pub struct State {
     pub engine: Box<dyn Engine>,
+    pub options: Options,
     pub next_color: Color,
 }
 
@@ -90,6 +92,23 @@ fn update(state: &mut State, tokens: Vec<&str>) -> UciResult {
     let parsed = parse_update_tokens(tokens);
     state.engine.update(parsed.fen, parsed.moves);
     state.next_color = swap_color(state.next_color);
+    UciResult::empty()
+}
+
+fn set_option(state: &mut State, tokens: Vec<&str>) -> UciResult {
+    if tokens.len() < 3 {
+        if tokens[1] == "name" {
+            let key = tokens[2];
+            if tokens.len() > 5 {
+                if tokens[3] == "value" {
+                    let value = tokens[4];
+                    state.options.add_value(key.to_string(), value.to_string());
+                }
+            } else {
+                state.options.add_flag(key.to_string());
+            }
+        }
+    }
     UciResult::empty()
 }
 
