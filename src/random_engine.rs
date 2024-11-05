@@ -24,6 +24,10 @@ impl Engine for RandomEngine {
     fn restart(&mut self) {
         self.pos = Board::default();
     }
+
+    fn evaluate(&self) -> f32 {
+        0.0
+    }
 }
 
 impl RandomEngine {

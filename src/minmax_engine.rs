@@ -63,12 +63,26 @@ impl Engine for MinMaxEngine {
     fn restart(&mut self) {
         self.pos = Board::default();
     }
+
+    fn evaluate(&self) -> f32 {
+        let moves_generator = MoveGen::new_legal(&self.pos);
+        let any_legal_move = moves_generator.size_hint().0 > 0;
+        let insufficient_material = is_insufficient_material(&self.pos);
+
+        let board_status = status(&self.pos, any_legal_move, insufficient_material);
+
+        if self.pos.side_to_move() == Color::White {
+            eval(&self.pos, board_status, 0)
+        } else {
+            -eval(&self.pos, board_status, 0)
+        }
+    }
 }
 
 impl MinMaxEngine {
     const MAX_DEPTH: usize = 30;
     const KILLER_MOVES_SIZE: usize = 2;
-    pub fn new(pos: Board,options:&Options) -> Self {
+    pub fn new(pos: Board, options: &Options) -> Self {
         let mut km = ArrayVec::<_, { Self::MAX_DEPTH }>::new();
         for _ in 0..Self::MAX_DEPTH {
             km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
@@ -310,7 +324,7 @@ mod mod_minmax_tests {
     #[test]
     fn minmax_depth8_inital_position() {
         let pos = Board::default();
-        let mut engine = MinMaxEngine::new(pos,&Options::new());
+        let mut engine = MinMaxEngine::new(pos, &Options::new());
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 8;
@@ -339,7 +353,7 @@ mod mod_minmax_tests {
 
     #[test]
     fn test_quiescence() {
-        let mut engine = MinMaxEngine::new(Board::default(),&Options::new());
+        let mut engine = MinMaxEngine::new(Board::default(), &Options::new());
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
         let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
             .unwrap();
@@ -383,7 +397,7 @@ mod checkmate_tests {
         let expected_depth = moves_to_mate * 2 - 1;
         let board = Board::from_str(fen).unwrap();
 
-        let mut engine = MinMaxEngine::new(board,&Options::new());
+        let mut engine = MinMaxEngine::new(board, &Options::new());
 
         for depth in 1..(expected_depth + 1) {
             engine.evaluations_cnt = 0;
