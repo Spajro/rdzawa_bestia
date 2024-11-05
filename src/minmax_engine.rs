@@ -28,17 +28,14 @@ pub struct MinMaxEngine {
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
-    pub half_moves: u32,
 }
 
 impl Engine for MinMaxEngine {
     fn start(&mut self, time: u64) {
-        self.half_moves += 1;
         send_move(self.find_best_move(time))
     }
 
     fn stop(&mut self) {
-        self.half_moves += 1;
         send_move(self.find_best_move(0))
     }
 
@@ -93,7 +90,6 @@ impl MinMaxEngine {
             evaluations_cnt: 0,
             book: OpeningBook::new(options.get_value("openings".to_string()).unwrap_or(&"book.json".to_string())),
             transposition_table: TranspositionTable::new(),
-            half_moves: 0,
         }
     }
 
