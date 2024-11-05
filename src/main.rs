@@ -1,5 +1,6 @@
 use chess::Board;
 use chess::Color::White;
+use crate::io::options::Options;
 
 use crate::io::output::send;
 use crate::io::uci;
@@ -15,8 +16,9 @@ mod random_engine;
 
 fn main() {
     let mut input = String::new();
-    let mut state = State{
+    let mut state = State {
         engine: Box::new(MinMaxEngine::new(Board::default())),
+        options: Options::new(),
         next_color: White,
     };
     let stdin = std::io::stdin();
