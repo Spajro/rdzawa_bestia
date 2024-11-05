@@ -41,6 +41,7 @@ pub fn handle_uci(uci: &String, state: &mut State) -> UciResult {
         "go" => go(state, time.unwrap()),
         "stop" => stop(state),
         "position" => update(state, tokens),
+        "eval" => evaluate(state),
         "quit" => quit(),
         &_ => UciResult::with("Unknown command |".to_string() + uci + "|")
     }
@@ -116,6 +117,10 @@ fn set_option(state: &mut State, tokens: Vec<&str>) -> UciResult {
         }
     }
     UciResult::empty()
+}
+
+fn evaluate(state: &State) -> UciResult {
+    UciResult::with("eval ".to_string() + &*state.engine.evaluate().to_string())
 }
 
 fn parse_update_tokens(tokens: Vec<&str>) -> ParseResult {

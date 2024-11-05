@@ -6,4 +6,5 @@ pub trait Engine {
     fn stop(&mut self);
     fn update(&mut self, fen: Position, moves: Vec<ChessMove>);
     fn restart(&mut self);
+    fn evaluate(&self)->f32;
 }
