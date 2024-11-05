@@ -166,7 +166,7 @@ impl UciResult {
 impl State {
     pub fn new() -> Self {
         Self {
-            engine: Box::new(MinMaxEngine::new(Board::default())),
+            engine: Box::new(MinMaxEngine::new(Board::default(), &Options::new())),
             options: Options::new(),
             next_color: White,
         }
