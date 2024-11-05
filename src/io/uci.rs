@@ -13,6 +13,7 @@ pub struct State {
     pub engine: Box<dyn Engine>,
     pub options: Options,
     pub next_color: Color,
+    pub is_set_up: bool,
 }
 
 pub struct UciResult {
@@ -35,7 +36,7 @@ pub fn handle_uci(uci: &String, state: &mut State) -> UciResult {
     let mut time: Option<u64> = get_time(&tokens, state.next_color);
     match tokens[0] {
         "uci" => start(),
-        "isready" => is_ready(),
+        "isready" => is_ready(state),
         "ucinewgame" => restart(state),
         "go" => go(state, time.unwrap()),
         "stop" => stop(state),
@@ -64,7 +65,11 @@ fn start() -> UciResult {
     UciResult::with("id name rdzawa_bestia\nuciok".to_string())
 }
 
-fn is_ready() -> UciResult {
+fn is_ready(state: &mut State) -> UciResult {
+    if !state.is_set_up {
+        state.engine = Box::new(MinMaxEngine::new(Board::default(), &state.options));
+        state.is_set_up = true;
+    }
     UciResult::with("readyok".to_string())
 }
 
@@ -169,6 +174,7 @@ impl State {
             engine: Box::new(MinMaxEngine::new(Board::default(), &Options::new())),
             options: Options::new(),
             next_color: White,
+            is_set_up: false,
         }
     }
 }
