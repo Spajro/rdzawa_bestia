@@ -77,7 +77,7 @@ impl MinMaxEngine {
             pos: pos,
             killer_moves: km,
             evaluations_cnt: 0,
-            book: OpeningBook::new(),
+            book: OpeningBook::new(&"book.json".to_string()),
             transposition_table: TranspositionTable::new(),
             half_moves: 0,
         }

@@ -16,9 +16,9 @@ pub struct QueryResult {
 }
 
 impl OpeningBook {
-    pub fn new() -> Self {
-        return if Path::new("book.json").exists() {
-            let json = fs::read_to_string("book.json").unwrap();
+    pub fn new(path:&String) -> Self {
+        return if Path::new(path).exists() {
+            let json = fs::read_to_string(path).unwrap();
             let book = json::parse(&*json).unwrap();
             OpeningBook { node: Some(book) }
         } else {
