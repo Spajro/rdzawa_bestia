@@ -59,6 +59,10 @@ impl Engine for MinMaxEngine {
 
     fn restart(&mut self) {
         self.pos = Board::default();
+        self.evaluations_cnt = 0;
+        self.transposition_table.restart();
+        self.killer_moves.clear();
+        self.book=self.book.restart();
     }
 
     fn evaluate(&self) -> f32 {

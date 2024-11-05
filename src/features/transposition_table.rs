@@ -64,6 +64,11 @@ impl TranspositionTable {
             .map(|e| e.clone())
     }
 
+    pub fn restart(&mut self) {
+        self.map.clear();
+        self.keys.clear();
+    }
+
     fn get_key(pos: &Board) -> FullHash {
         return pos.get_hash();
     }
