@@ -8,6 +8,7 @@ use std::str::FromStr;
 #[derive(Clone)]
 pub struct OpeningBook {
     node: Option<JsonValue>,
+    path: String,
 }
 
 pub struct QueryResult {
@@ -16,37 +17,38 @@ pub struct QueryResult {
 }
 
 impl OpeningBook {
-    pub fn new(path:&String) -> Self {
+    pub fn new(path: &String) -> Self {
         return if Path::new(path).exists() {
             let json = fs::read_to_string(path).unwrap();
             let book = json::parse(&*json).unwrap();
-            OpeningBook { node: Some(book) }
+            OpeningBook { node: Some(book), path: path.clone() }
         } else {
-            OpeningBook { node: None }
+            OpeningBook { node: None, path: path.clone() }
         };
     }
 
-    pub fn empty() -> Self{
-        return OpeningBook{
+    pub fn empty() -> Self {
+        return OpeningBook {
             node: None,
-        }
+            path: "".to_string(),
+        };
     }
 
     pub fn update(self, mv: String) -> Self {
         if self.node.is_none() {
             send_info("Book empty: ".to_string() + &*mv);
-            return OpeningBook { node: None };
+            return OpeningBook { node: None, path: self.path };
         }
 
         let node = self.node.unwrap();
         if !node.has_key(mv.as_str()) {
             send_info("Move not in book: ".to_string() + &*mv);
-            return OpeningBook { node: None };
+            return OpeningBook { node: None, path: self.path };
         };
 
         send_info("Move in book:".to_string() + &*mv);
         let nxt = node[mv.as_str()].clone();
-        OpeningBook { node: Some(nxt) }
+        OpeningBook { node: Some(nxt), path: self.path }
     }
 
     pub fn try_get_best(self) -> QueryResult {
@@ -54,7 +56,7 @@ impl OpeningBook {
             send_info("No move found".to_string());
             return QueryResult {
                 mv: None,
-                book: OpeningBook { node: None },
+                book: OpeningBook { node: None, path: self.path },
             };
         }
 
@@ -63,7 +65,7 @@ impl OpeningBook {
             send_info("No move found".to_string());
             return QueryResult {
                 mv: None,
-                book: OpeningBook { node: None },
+                book: OpeningBook { node: None, path: self.path },
             };
         }
 
@@ -73,7 +75,11 @@ impl OpeningBook {
         let mov = ChessMove::from_str(mv).unwrap();
         QueryResult {
             mv: Some(mov),
-            book: OpeningBook { node: Some(nxt) },
+            book: OpeningBook { node: Some(nxt), path: self.path },
         }
+    }
+
+    pub fn restart(&self) -> Self {
+        Self::new(&self.path)
     }
 }
