@@ -38,7 +38,7 @@ pub fn handle_uci(uci: &String, state: &mut State) -> UciResult {
         "stop" => stop(state),
         "position" => update(state, tokens),
         "quit" => quit(),
-        &_ => UciResult { msg: Some("Unknown command |".to_string() + uci + "|") }
+        &_ => UciResult::with("Unknown command |".to_string() + uci + "|")
     }
 }
 
@@ -58,38 +58,28 @@ fn get_time(tokens: &Vec<&str>, next_color: Color) -> Option<u64> {
 }
 
 fn start() -> UciResult {
-    UciResult {
-        msg: Some("id name rdzawa_bestia\nuciok".parse().unwrap()),
-    }
+    UciResult::with("id name rdzawa_bestia\nuciok".to_string())
 }
 
 fn is_ready() -> UciResult {
-    UciResult {
-        msg: Some("readyok".parse().unwrap()),
-    }
+    UciResult::with("readyok".to_string())
 }
 
 fn restart(state: &mut State) -> UciResult {
     state.engine.restart();
     state.next_color = White;
-    UciResult {
-        msg: None,
-    }
+    UciResult::empty()
 }
 
 fn go(state: &mut State, time: u64) -> UciResult {
     state.engine.start(time);
     state.next_color = swap_color(state.next_color);
-    UciResult {
-        msg: None,
-    }
+    UciResult::empty()
 }
 
 fn stop(state: &mut State) -> UciResult {
     state.engine.stop();
-    UciResult {
-        msg: None,
-    }
+    UciResult::empty()
 }
 
 fn quit() -> UciResult {
@@ -100,9 +90,7 @@ fn update(state: &mut State, tokens: Vec<&str>) -> UciResult {
     let parsed = parse_update_tokens(tokens);
     state.engine.update(parsed.fen, parsed.moves);
     state.next_color = swap_color(state.next_color);
-    UciResult {
-        msg: None,
-    }
+    UciResult::empty()
 }
 
 fn parse_update_tokens(tokens: Vec<&str>) -> ParseResult {
@@ -139,4 +127,18 @@ fn swap_color(color: Color) -> Color {
         White => Black,
         Black => White
     };
+}
+
+impl UciResult {
+    pub fn empty() -> Self {
+        Self {
+            msg: None,
+        }
+    }
+
+    pub fn with(msg: String) -> Self {
+        Self {
+            msg: Some(msg),
+        }
+    }
 }
