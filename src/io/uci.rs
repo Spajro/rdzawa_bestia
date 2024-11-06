@@ -41,6 +41,7 @@ pub fn handle_uci(uci: &String, state: &mut State) -> UciResult {
         "go" => go(state, time.unwrap()),
         "stop" => stop(state),
         "position" => update(state, tokens),
+        "setoption" => set_option(state, tokens),
         "eval" => evaluate(state),
         "quit" => quit(),
         &_ => UciResult::with("Unknown command |".to_string() + uci + "|")
@@ -103,10 +104,10 @@ fn update(state: &mut State, tokens: Vec<&str>) -> UciResult {
 }
 
 fn set_option(state: &mut State, tokens: Vec<&str>) -> UciResult {
-    if tokens.len() < 3 {
+    if tokens.len() > 2 {
         if tokens[1] == "name" {
             let key = tokens[2];
-            if tokens.len() > 5 {
+            if tokens.len() > 4 {
                 if tokens[3] == "value" {
                     let value = tokens[4];
                     state.options.add_value(key.to_string(), value.to_string());
