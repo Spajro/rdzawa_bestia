@@ -61,8 +61,12 @@ impl Engine for MinMaxEngine {
         self.pos = Board::default();
         self.evaluations_cnt = 0;
         self.transposition_table.restart();
-        self.killer_moves.clear();
-        self.book=self.book.restart();
+        self.book = self.book.restart();
+
+        self.killer_moves = ArrayVec::<_, { Self::MAX_DEPTH }>::new();
+        for _ in 0..Self::MAX_DEPTH {
+            self.killer_moves.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
+        }
     }
 
     fn evaluate(&self) -> f32 {
