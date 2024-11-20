@@ -8,6 +8,12 @@ if [ "$(uname -s)" == "Linux"  ] && [ ! -e stockfish ]; then
   rm stockfish-ubuntu-x86-64-avx2.tar
 fi
 
+if [ "$(uname -s)" == "Linux"  ]; then
+  python3 -m venv .venv
+  source .venv/bin/activate
+  which python
+fi
+
 python3 -m pip install zstandard
 python3 -m pip install stockfish
 python3 -m pip install chess
@@ -15,3 +21,5 @@ python3 -m pip install chess
 python3 chess_engine_evaluator/setup.py stockfish stockfish/stockfish-ubuntu-x86-64-avx2
 python3 chess_engine_evaluator/setup.py uci rdzawa_bestia ../target/debug/rdzawa_bestia.exe
 python3 chess_engine_evaluator/setup.py puzzles
+
+deactivate
