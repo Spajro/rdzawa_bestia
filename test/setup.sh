@@ -1,14 +1,29 @@
+unameOut="$(uname -s)"
+case "${unameOut}" in
+    Linux*)     machine=Linux;;
+    Darwin*)    machine=Mac;;
+    CYGWIN*)    machine=Cygwin;;
+    MINGW*)     machine=MinGw;;
+    MSYS_NT*)   machine=MSys;;
+    *)          machine="${unameOut}"
+esac
+
+if [ ! "$machine" == Linux ] && [ ! "$machine" == MinGw ]; then
+  echo "Unsupported Machine:${unameOut}"
+  exit 1
+fi
+
 if [ ! -e chess_engine_evaluator ]; then
   git clone https://github.com/Spajro/chess_engine_evaluator
 fi
 
-if [ "$(uname -s)" == "Linux"  ] && [ ! -e stockfish ]; then
+if [ "$(uname -s)" == Linux  ] && [ ! -e stockfish ]; then
   wget https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar
   tar -xf stockfish-ubuntu-x86-64-avx2.tar
   rm stockfish-ubuntu-x86-64-avx2.tar
 fi
 
-if [ "$(uname -s)" == "Linux" ]; then
+if [ "$(uname -s)" == Linux ]; then
   if [ ! -e .venv ]; then
     python3 -m venv .venv
   fi
