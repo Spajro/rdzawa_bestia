@@ -1,3 +1,5 @@
+shopt -s expand_aliases
+
 unameOut="$(uname -s)"
 case "${unameOut}" in
     Linux*)     machine=Linux;;
@@ -17,18 +19,34 @@ if [ ! -e chess_engine_evaluator ]; then
   git clone https://github.com/Spajro/chess_engine_evaluator
 fi
 
-if [ "$(uname -s)" == Linux  ] && [ ! -e stockfish ]; then
+if [ "$machine" == Linux  ] && [ ! -e stockfish ]; then
   wget https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar
   tar -xf stockfish-ubuntu-x86-64-avx2.tar
   rm stockfish-ubuntu-x86-64-avx2.tar
 fi
 
-if [ "$(uname -s)" == Linux ]; then
+if [ "$machine" == MinGw  ] && [ ! -e stockfish ]; then
+  echo "Stockfish"
+  wget https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-windows-x86-64-avx2.zip
+  unzip stockfish-windows-x86-64-avx2.zip
+  rm stockfish-windows-x86-64-avx2.zip
+fi
+
+if [ "$machine" == Linux ]; then
   if [ ! -e .venv ]; then
     python3 -m venv .venv
   fi
   source .venv/bin/activate
   which python
+fi
+
+if [ "$machine" == MinGw  ]; then
+  if [ ! -e .venv ]; then
+      py -m venv .venv
+    fi
+    source .venv\\Scripts\\activate
+    where python
+    alias python3=py
 fi
 
 python3 -m pip install zstandard
@@ -40,3 +58,4 @@ python3 chess_engine_evaluator/setup.py uci rdzawa_bestia ../target/debug/rdzawa
 python3 chess_engine_evaluator/setup.py puzzles
 
 deactivate
+shopt -u expand_aliases
