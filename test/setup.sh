@@ -8,8 +8,10 @@ if [ "$(uname -s)" == "Linux"  ] && [ ! -e stockfish ]; then
   rm stockfish-ubuntu-x86-64-avx2.tar
 fi
 
-if [ "$(uname -s)" == "Linux"  ]; then
-  python3 -m venv .venv
+if [ "$(uname -s)" == "Linux" ]; then
+  if [ ! -e .venv ]; then
+    python3 -m venv .venv
+  fi
   source .venv/bin/activate
   which python
 fi
