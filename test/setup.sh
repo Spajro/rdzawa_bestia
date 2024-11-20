@@ -38,6 +38,8 @@ if [ "$machine" == Linux ]; then
   fi
   source .venv/bin/activate
   which python
+  engine_path=../target/debug/rdzawa_bestia
+  stockfish_path=stockfish/stockfish-ubuntu-x86-64-avx2
 fi
 
 if [ "$machine" == MinGw  ]; then
@@ -47,14 +49,16 @@ if [ "$machine" == MinGw  ]; then
     source .venv\\Scripts\\activate
     where python
     alias python3=py
+    engine_path=../target/debug/rdzawa_bestia.exe
+    stockfish_path=stockfish/stockfish-windows-x86-64-avx2
 fi
 
 python3 -m pip install zstandard
 python3 -m pip install stockfish
 python3 -m pip install chess
 
-python3 chess_engine_evaluator/setup.py stockfish stockfish/stockfish-ubuntu-x86-64-avx2
-python3 chess_engine_evaluator/setup.py uci rdzawa_bestia ../target/debug/rdzawa_bestia
+python3 chess_engine_evaluator/setup.py stockfish $stockfish_path
+python3 chess_engine_evaluator/setup.py uci rdzawa_bestia $engine_path
 python3 chess_engine_evaluator/setup.py puzzles
 
 deactivate
