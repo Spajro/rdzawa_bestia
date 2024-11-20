@@ -19,7 +19,7 @@ python3 -m pip install stockfish
 python3 -m pip install chess
 
 python3 chess_engine_evaluator/setup.py stockfish stockfish/stockfish-ubuntu-x86-64-avx2
-python3 chess_engine_evaluator/setup.py uci rdzawa_bestia ../target/debug/rdzawa_bestia.exe
+python3 chess_engine_evaluator/setup.py uci rdzawa_bestia ../target/debug/rdzawa_bestia
 python3 chess_engine_evaluator/setup.py puzzles
 
 deactivate
