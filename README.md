@@ -28,11 +28,11 @@ For the engine tests you also need to have stockfish installed on your system.
 ## Installation and setup:
 
 For installation just clone the repository.
-After that run the script that sets up the testing environment:
+After that run the script that sets up the testing environment: `./test/setup.sh`
 
-```
-./test/setup.sh
-```
+## Usage:
 
-## Use example
+* evaluate the engine: `./test/evaluate.sh`
+* solve puzzles with the engine: `./test/puzzle.sh`
+* test the engine evaluation function: `./test/test_eval.sh`
 
