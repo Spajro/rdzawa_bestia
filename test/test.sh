@@ -50,4 +50,3 @@ fi
 
 deactivate
 shopt -u expand_aliases
-sleep 10
