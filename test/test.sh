@@ -1,6 +1,6 @@
-namePuzzle="solve_puzzle"
-nameEval="play_games"
-nameFunction="evaluation_function"
+namePuzzle="puzzle"
+nameEval="stockfish"
+nameFunction="evaluation"
 
 usage(){
   echo "USAGE:"
