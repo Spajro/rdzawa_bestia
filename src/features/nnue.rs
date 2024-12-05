@@ -1,5 +1,5 @@
 use std::ops::{Index, IndexMut};
-use chess::{Board, BoardStatus};
+use chess::{Board, BoardStatus, ChessMove, Piece, Square};
 use crate::features::Evaluation;
 
 const M: usize = 128;
@@ -50,11 +50,11 @@ impl Accumulator {
         let new_acc = Accumulator {
             v: [[0.0; 128]; 2],
         };
-        for i in 1..M - 1 {
+        for i in 1..M {
             new_acc[perspective][i] = layer.bias[i];
         }
         for feature in active_features {
-            for i in 1..M - 1 {
+            for i in 1..M {
                 new_acc[perspective][i] += layer.weight[feature][i];
             }
         }
@@ -150,13 +150,63 @@ impl Evaluation for NNUE {
     }
 }
 
-struct LinearLayer{
-    in_dim:usize,
-    out_dim:usize,
-    weight:[f32],
-    bias:[f32],
+struct LinearLayer {
+    in_dim: usize,
+    out_dim: usize,
+    weight: [f32],
+    bias: [f32],
 }
 
-impl LinearLayer{
+impl LinearLayer {
+    //TODO importing weights and biases
+}
 
+struct HalfKP {}
+
+impl HalfKP {
+    pub fn board_to_feature_set(board: Board) -> Vec<usize> {
+        let white_king = board.king_square(chess::Color::White);
+        let black_king = board.king_square(chess::Color::Black);
+        let mut features = Vec::new();
+
+        for (piece_type, piece_color, piece_square) in Self::gather_pieces_from_board(board) {
+            let (white_idx, black_idx) = Self::generate_indexes(piece_type, piece_color, piece_square, white_king, black_king);
+            features.push(white_idx);
+            features.push(black_idx);
+        }
+        features
+    }
+
+    pub fn move_to_new_feature(chess_move: ChessMove) -> usize {
+        if chess_move.get_promotion().is_some() {
+            //TODO
+        }
+    }
+
+    pub fn move_to_removed_features(chess_move: ChessMove) -> Vec<usize> {
+        //TODO
+    }
+
+    fn gather_pieces_from_board(board: Board) -> Vec<(Piece, chess::Color, Square)> {
+        let mut result = Vec::new();
+        for square in chess::ALL_SQUARES {  //TODO speed up
+            let opt_piece = board.piece_on(square);
+            if opt_piece.is_some() {
+                let color = board.color_on(square);
+                result.push((opt_piece.unwrap(), color.unwrap(), square));
+            }
+        }
+        result
+    }
+
+    fn generate_indexes(piece_type: Piece,
+                        piece_color: chess::Color,
+                        piece_square: Square,
+                        white_king: Square,
+                        black_king: Square) -> (usize, usize) {
+        let p_idx = piece_type.to_index() * 2 + piece_color.to_index();
+        let white_idx = piece_square.to_index() + (p_idx + white_king.to_index() * 10) * 64;
+        let black_idx = piece_square.to_index() + (p_idx + black_king.to_index() * 10) * 64;
+        return (white_idx, black_idx);
+    }
 }
