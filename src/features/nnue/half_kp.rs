@@ -1,6 +1,6 @@
 use chess::{Board, ChessMove, Piece, Square};
 
-struct HalfKP {}
+pub struct HalfKP {}
 
 struct FeaturesDifference {
     pub added: Vec<usize>,
@@ -17,7 +17,7 @@ impl FeaturesDifference {
 }
 
 impl HalfKP {
-    pub fn board_to_feature_set(board: Board) -> Vec<usize> {
+    pub fn board_to_feature_set(board: &Board) -> Vec<usize> {
         let white_king = board.king_square(chess::Color::White);
         let black_king = board.king_square(chess::Color::Black);
         let mut features = Vec::new();
@@ -30,8 +30,8 @@ impl HalfKP {
         features
     }
 
-    pub fn move_to_features_difference(chess_move: ChessMove,
-                                       board: Board,
+    pub fn move_to_features_difference(chess_move: &ChessMove,
+                                       board: &Board,
     ) -> FeaturesDifference {
         let white_king = board.king_square(chess::Color::White);
         let black_king = board.king_square(chess::Color::Black);
@@ -78,7 +78,7 @@ impl HalfKP {
         result
     }
 
-    fn gather_pieces_from_board(board: Board) -> Vec<(Piece, chess::Color, Square)> {
+    fn gather_pieces_from_board(board: &Board) -> Vec<(Piece, chess::Color, Square)> {
         let mut result = Vec::new();
         for square in chess::ALL_SQUARES {  //TODO speed up
             let opt_piece = board.piece_on(square);
