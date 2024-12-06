@@ -1,4 +1,7 @@
 use std::ops::{Index, IndexMut};
+use features::nnue::network;
+use network::LinearLayer;
+use crate::features;
 
 
 pub const M: usize = 128;
@@ -23,6 +26,7 @@ pub fn from(color: chess::Color) -> Color {
     }
 }
 
+#[derive(Clone)]
 pub struct Accumulator {
     v: [[f32; M]; 2],
 }
@@ -42,13 +46,17 @@ impl IndexMut<usize> for Accumulator {
 }
 
 impl Accumulator {
-    fn refresh(layer: &crate::features::nnue::network::LinearLayer,
-               active_features: &Vec<u8>,
-               perspective: Color,
-    ) {
-        let new_acc = Accumulator {
+    pub fn new() -> Self {
+        Accumulator {
             v: [[0.0; 128]; 2],
-        };
+        }
+    }
+    pub fn refresh(layer: &LinearLayer,
+                   active_features: &Vec<usize>,
+                   perspective: Color,
+    ) -> Accumulator {
+        let new_acc = Accumulator::new();
+
         for i in 1..M {
             new_acc[perspective][i] = layer.bias[i];
         }
@@ -57,13 +65,14 @@ impl Accumulator {
                 new_acc[perspective][i] += layer.weight[feature][i];
             }
         }
+        new_acc
     }
 
-    fn update(&mut self,
-              layer: &crate::features::nnue::network::LinearLayer,
-              active_features: &Vec<u8>,
-              removed_features: &Vec<u8>,
-              perspective: Color,
+    pub fn update(&mut self,
+                  layer: &LinearLayer,
+                  active_features: &Vec<usize>,
+                  removed_features: &Vec<usize>,
+                  perspective: Color,
     ) {
         for feature in removed_features {
             for i in 1..M {

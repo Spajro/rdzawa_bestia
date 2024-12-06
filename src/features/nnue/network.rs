@@ -1,16 +1,15 @@
 use chess::{Board, BoardStatus};
 
-use crate::features::Evaluation;
-use crate::features::nnue::accumulator::{from, M, not};
+use crate::features::nnue::accumulator::{Accumulator, from, M, not};
 
-struct NNUE {
-    l_0: LinearLayer,
-    l_1: LinearLayer,
-    l_2: LinearLayer,
+pub struct NNUE {
+    pub l_0: LinearLayer,
+    pub l_1: LinearLayer,
+    pub l_2: LinearLayer,
 }
 
-impl Evaluation for NNUE {
-    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
+impl NNUE {
+    pub(crate) fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize, accumulator: &Accumulator) -> f32 {
         match board_status {
             BoardStatus::Checkmate => {
                 if board.side_to_move() == chess::Color::White {
