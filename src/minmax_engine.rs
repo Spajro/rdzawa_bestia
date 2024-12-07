@@ -12,6 +12,7 @@ use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use chess::Piece::King;
 use crate::features::nnue::accumulator::{Accumulator, from};
 use crate::features::nnue::half_kp::HalfKP;
 use crate::features::nnue::network::NNUE;
@@ -193,8 +194,13 @@ impl MinMaxEngine {
         let mut new_pos = pos.clone();
         for (value, next_move) in move_order {
             pos.make_move(next_move, &mut new_pos);
+
             let features = HalfKP::move_to_features_difference(&next_move, &pos);
-            self.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()));
+            if pos.piece_on(next_move.get_source()).unwrap() == King {
+                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&new_pos), from(new_pos.side_to_move()))
+            } else {
+                self.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()));
+            }
 
             let mut result: Result = self.negamax(
                 new_pos,
@@ -205,7 +211,13 @@ impl MinMaxEngine {
                 -alpha,
                 end_time,
             );
-            self.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
+
+            if pos.piece_on(next_move.get_source()).unwrap() == King {
+                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&pos), from(pos.side_to_move()))
+            } else {
+                self.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
+            }
+
             result.score = -result.score;
 
             if result.computed == false {
