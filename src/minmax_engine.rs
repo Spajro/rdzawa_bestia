@@ -120,7 +120,6 @@ impl MinMaxEngine {
         mut alpha: f32,
         mut beta: f32,
         end_time: Instant,
-        accumulator: &Accumulator,
     ) -> Result {
         if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
             return Result {
@@ -155,9 +154,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                self.evaluator.eval(&pos, board_status, total_depth, accumulator)
+                self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
             } else {
-                -self.evaluator.eval(&pos, board_status, total_depth, accumulator)
+                -self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
             };
             self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
@@ -205,7 +204,6 @@ impl MinMaxEngine {
                 -beta,
                 -alpha,
                 end_time,
-                &self.accumulator,
             );
             self.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
             result.score = -result.score;
@@ -278,10 +276,9 @@ impl MinMaxEngine {
                     neg_inf,
                     pos_inf,
                     end_time,
-                    &self.accumulator,
                 );
             } else {
-                result = self.negamax(self.pos.clone(), depth, qdepth, 0, alpha, beta, end_time, &self.accumulator);
+                result = self.negamax(self.pos.clone(), depth, qdepth, 0, alpha, beta, end_time);
 
                 if result.score >= beta {
                     result = self.negamax(
@@ -292,7 +289,6 @@ impl MinMaxEngine {
                         result.score,
                         pos_inf,
                         end_time,
-                        &self.accumulator,
                     );
                 } else if result.score <= alpha {
                     result = self.negamax(
@@ -303,7 +299,6 @@ impl MinMaxEngine {
                         neg_inf,
                         result.score,
                         end_time,
-                        &self.accumulator,
                     );
                 }
 
@@ -316,7 +311,6 @@ impl MinMaxEngine {
                         neg_inf,
                         pos_inf,
                         end_time,
-                        &self.accumulator,
                     );
                 }
             }
@@ -351,8 +345,7 @@ mod mod_minmax_tests {
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 8;
-        let accumulator = Accumulator::new();
-        let result = engine.negamax(pos, depth, 2 * depth, 0, -1e9, 1e9, max_time, &accumulator);
+        let result = engine.negamax(pos, depth, 2 * depth, 0, -1e9, 1e9, max_time);
         let duration = Instant::now().duration_since(start_time);
 
         println!("best move: {:?}", result.chosen_move);
@@ -427,10 +420,9 @@ mod checkmate_tests {
             engine.evaluations_cnt = 0;
             let start_time = Instant::now();
             let max_time = start_time.add(Duration::from_secs(60 * 10));
-            let accumulator = Accumulator::new();
 
             // quiescence has to be disabled!
-            let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time, &accumulator);
+            let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time);
 
             let duration = Instant::now().duration_since(start_time);
             println!(
