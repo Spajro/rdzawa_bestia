@@ -158,9 +158,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                self.evaluator.eval(&pos, board_status, total_depth, accumulator)
+                self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
             } else {
-                -self.evaluator.eval(&pos, board_status, total_depth, accumulator)
+                -self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
             };
             self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
@@ -441,7 +441,6 @@ mod checkmate_tests {
             engine.evaluations_cnt = 0;
             let start_time = Instant::now();
             let max_time = start_time.add(Duration::from_secs(60 * 10));
-            let accumulator = Accumulator::new();
 
             // quiescence has to be disabled!
             let result = engine.negamax(board, depth, 0, 0, -1e9 as i32, 1e9 as i32, max_time,false, &accumulator);
