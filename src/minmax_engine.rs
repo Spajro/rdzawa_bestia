@@ -33,7 +33,6 @@ pub struct MinMaxEngine {
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
     pub evaluator: NNUE,
-    pub accumulator: Accumulator,
 }
 
 impl Engine for MinMaxEngine {
@@ -54,14 +53,14 @@ impl Engine for MinMaxEngine {
                     self.pos = self.pos.make_move_new(mv)
                 }
                 self.book = OpeningBook::empty();
-                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
             }
             Position::START => {
                 let mv = moves.last().unwrap();
                 let mov = mv.to_string();
                 self.book = self.book.clone().update(mov);
                 self.pos = self.pos.make_move_new(*mv);
-                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
             }
         }
     }
@@ -86,9 +85,9 @@ impl Engine for MinMaxEngine {
         let board_status = status(&self.pos, any_legal_move, insufficient_material);
 
         if self.pos.side_to_move() == Color::White {
-            self.evaluator.eval(&self.pos, board_status, 0, &self.accumulator)
+            self.evaluator.eval(&self.pos, board_status, 0)
         } else {
-            -self.evaluator.eval(&self.pos, board_status, 0, &self.accumulator)
+            -self.evaluator.eval(&self.pos, board_status, 0)
         }
     }
 }
@@ -108,7 +107,6 @@ impl MinMaxEngine {
             book: OpeningBook::new(options.get_value("openings".to_string()).unwrap_or(&"book.json".to_string())),
             transposition_table: TranspositionTable::new(),
             evaluator: NNUE::new(),
-            accumulator: Accumulator::new(),
         }
     }
 
@@ -155,9 +153,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
+                self.evaluator.eval(&pos, board_status, total_depth)
             } else {
-                -self.evaluator.eval(&pos, board_status, total_depth, &self.accumulator)
+                -self.evaluator.eval(&pos, board_status, total_depth)
             };
             self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
@@ -197,9 +195,9 @@ impl MinMaxEngine {
 
             let features = HalfKP::move_to_features_difference(&next_move, &pos);
             if pos.piece_on(next_move.get_source()).unwrap() == King {
-                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&new_pos), from(new_pos.side_to_move()))
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&new_pos), from(new_pos.side_to_move()))
             } else {
-                self.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()));
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()));
             }
 
             let mut result: Result = self.negamax(
@@ -213,9 +211,9 @@ impl MinMaxEngine {
             );
 
             if pos.piece_on(next_move.get_source()).unwrap() == King {
-                self.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&pos), from(pos.side_to_move()))
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&pos), from(pos.side_to_move()))
             } else {
-                self.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
             }
 
             result.score = -result.score;
