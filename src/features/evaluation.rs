@@ -1,76 +1,38 @@
 use chess::{BitBoard, Board, BoardStatus, Color, File, Piece, Rank, Square};
+use crate::features::Evaluation;
 
-#[rustfmt::skip]
-pub const KING_SQUARE_TABLE: [i32; 64] = [
-    -30,-40,-40,-50,-50,-40,-40,-30, 
-    -30,-40,-40,-50,-50,-40,-40,-30, 
-    -30,-40,-40,-50,-50,-40,-40,-30, 
-    -30,-40,-40,-50,-50,-40,-40,-30, 
-    -20,-30,-30,-40,-40,-30,-30,-20, 
-    -10,-20,-20,-20,-20,-20,-20,-10, 
-     20, 20,  0,  0,  0,  0, 20, 20, 
-     20, 30, 10,  0,  0, 10, 30, 20,
-];
+pub struct Evaluator {}
 
-#[rustfmt::skip]
-pub const QUEEN_SQUARE_TABLE: [i32; 64] = [
-    -20,-10,-10, -5, -5,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5,  5,  5,  5,  0,-10,
-     -5,  0,  5,  5,  5,  5,  0, -5,
-      0,  0,  5,  5,  5,  5,  0, -5,
-    -10,  5,  5,  5,  5,  5,  0,-10,
-    -10,  0,  5,  0,  0,  0,  0,-10,
-    -20,-10,-10, -5, -5,-10,-10,-20,
-];
+impl Evaluator {
+    pub(crate) fn new() -> Self {
+        Self {}
+    }
+}
 
-#[rustfmt::skip]
-pub const ROOK_SQUARE_TABLE: [i32; 64] = [
-    0,  0,  0,  0,  0,  0,  0,  0,
-    5, 10, 10, 10, 10, 10, 10,  5,
-   -5,  0,  0,  0,  0,  0,  0, -5,
-   -5,  0,  0,  0,  0,  0,  0, -5,
-   -5,  0,  0,  0,  0,  0,  0, -5,
-   -5,  0,  0,  0,  0,  0,  0, -5,
-   -5,  0,  0,  0,  0,  0,  0, -5,
-    0,  0,  0,  5,  5,  0,  0,  0,
-];
+impl Evaluation for Evaluator {
+    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
+        match board_status {
+            BoardStatus::Checkmate => {
+                if board.side_to_move() == Color::White {
+                    -1e9 + 100.0 * depth as f32
+                } else {
+                    1e9 - 100.0 * depth as f32
+                }
+            }
 
-#[rustfmt::skip]
-pub const BISHOP_SQUARE_TABLE: [i32; 64] = [
-    -20,-10,-10,-10,-10,-10,-10,-20,
-    -10,  0,  0,  0,  0,  0,  0,-10,
-    -10,  0,  5, 10, 10,  5,  0,-10,
-    -10,  5,  5, 10, 10,  5,  5,-10,
-    -10,  0, 10, 10, 10, 10,  0,-10,
-    -10, 10, 10, 10, 10, 10, 10,-10,
-    -10,  5,  0,  0,  0,  0,  5,-10,
-    -20,-10,-10,-10,-10,-10,-10,-20,
-];
+            BoardStatus::Stalemate => 0.0,
 
-#[rustfmt::skip]
-pub const KNIGHT_SQUARE_TABLE: [i32; 64] = [
-    -50, -40, -30, -30, -30, -30, -40, -50,
-    -40, -20,   0,   0,   0,   0, -20, -40,
-    -30,   0,  10,  15,  15,  10,   0, -30,
-    -30,   5,  15,  20,  20,  15,   5, -30,
-    -30,   0,  15,  20,  20,  15,   0, -30,
-    -30,   5,  10,  15,  15,  10,   5, -30,
-    -40, -20,   0,   5,   5,   0, -20, -40,
-    -50, -40, -30, -30, -30, -30, -40, -50,
-];
+            BoardStatus::Ongoing => {
+                let white_value = get_pieces_value(board, board.color_combined(Color::White));
+                let black_value = get_pieces_value(board, board.color_combined(Color::Black));
+                white_value as f32 - black_value as f32
+                    + get_position_cumulative_value(board, Color::White)
+                    - get_position_cumulative_value(board, Color::Black)
+            }
+        }
+    }
+}
 
-#[rustfmt::skip]
-pub const PAWN_SQUARE_TABLE: [i32; 64] = [
-     0,  0,  0,  0,  0,  0,  0,  0, 
-    50, 50, 50, 50, 50, 50, 50, 50,
-    10, 10, 20, 30, 30, 20, 10, 10,
-     5,  5, 10, 25, 25, 10,  5,  5,
-     0,  0,  0, 20, 20,  0,  0,  0,
-     5, -5,-10,  0,  0,-10, -5,  5,
-     5, 10, 10,-20,-20, 10, 10,  5,
-     0,  0,  0,  0,  0,  0,  0,  0,
-];
 
 fn file_distance(a: File, b: File) -> i32 {
     i32::abs(a.to_index() as i32 - b.to_index() as i32)
@@ -83,12 +45,12 @@ fn rank_distance(a: Rank, b: Rank) -> i32 {
 pub fn get_sq_val(sq: Square, square_table: [i32; 64], color: Color) -> i32 {
     let index = file_distance(sq.get_file(), File::H)
         + 8 * rank_distance(
-            sq.get_rank(),
-            match color {
-                Color::White => Rank::Eighth,
-                Color::Black => Rank::First,
-            },
-        );
+        sq.get_rank(),
+        match color {
+            Color::White => Rank::Eighth,
+            Color::Black => Rank::First,
+        },
+    );
     square_table[index as usize]
 }
 
@@ -130,27 +92,78 @@ pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
     king_pos_val + queen_pos_val + rooks_pos_val + bishops_pos_val + knights_pos_val + pawns_pos_val
 }
 
-pub fn eval(board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
-    match board_status {
-        BoardStatus::Checkmate => {
-            if board.side_to_move() == Color::White {
-                -1e9 + 100.0 * depth as f32
-            } else {
-                1e9 - 100.0 * depth as f32
-            }
-        }
+#[rustfmt::skip]
+pub const KING_SQUARE_TABLE: [i32; 64] = [
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -30,-40,-40,-50,-50,-40,-40,-30,
+    -20,-30,-30,-40,-40,-30,-30,-20,
+    -10,-20,-20,-20,-20,-20,-20,-10,
+     20, 20,  0,  0,  0,  0, 20, 20,
+     20, 30, 10,  0,  0, 10, 30, 20,
+];
 
-        BoardStatus::Stalemate => 0.0,
+#[rustfmt::skip]
+pub const QUEEN_SQUARE_TABLE: [i32; 64] = [
+    -20,-10,-10, -5, -5,-10,-10,-20,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,  0,  5,  5,  5,  5,  0,-10,
+     -5,  0,  5,  5,  5,  5,  0, -5,
+      0,  0,  5,  5,  5,  5,  0, -5,
+    -10,  5,  5,  5,  5,  5,  0,-10,
+    -10,  0,  5,  0,  0,  0,  0,-10,
+    -20,-10,-10, -5, -5,-10,-10,-20,
+];
 
-        BoardStatus::Ongoing => {
-            let white_value = get_pieces_value(board, board.color_combined(Color::White));
-            let black_value = get_pieces_value(board, board.color_combined(Color::Black));
-            white_value as f32 - black_value as f32
-                + get_position_cumulative_value(board, Color::White)
-                - get_position_cumulative_value(board, Color::Black)
-        }
-    }
-}
+#[rustfmt::skip]
+pub const ROOK_SQUARE_TABLE: [i32; 64] = [
+     0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+     0,  0,  0,  5,  5,  0,  0,  0,
+];
+
+#[rustfmt::skip]
+pub const BISHOP_SQUARE_TABLE: [i32; 64] = [
+    -20,-10,-10,-10,-10,-10,-10,-20,
+    -10,  0,  0,  0,  0,  0,  0,-10,
+    -10,  0,  5, 10, 10,  5,  0,-10,
+    -10,  5,  5, 10, 10,  5,  5,-10,
+    -10,  0, 10, 10, 10, 10,  0,-10,
+    -10, 10, 10, 10, 10, 10, 10,-10,
+    -10,  5,  0,  0,  0,  0,  5,-10,
+    -20,-10,-10,-10,-10,-10,-10,-20,
+];
+
+#[rustfmt::skip]
+pub const KNIGHT_SQUARE_TABLE: [i32; 64] = [
+    -50, -40, -30, -30, -30, -30, -40, -50,
+    -40, -20,   0,   0,   0,   0, -20, -40,
+    -30,   0,  10,  15,  15,  10,   0, -30,
+    -30,   5,  15,  20,  20,  15,   5, -30,
+    -30,   0,  15,  20,  20,  15,   0, -30,
+    -30,   5,  10,  15,  15,  10,   5, -30,
+    -40, -20,   0,   5,   5,   0, -20, -40,
+    -50, -40, -30, -30, -30, -30, -40, -50,
+];
+
+#[rustfmt::skip]
+pub const PAWN_SQUARE_TABLE: [i32; 64] = [
+     0,  0,  0,  0,  0,  0,  0,  0,
+    50, 50, 50, 50, 50, 50, 50, 50,
+    10, 10, 20, 30, 30, 20, 10, 10,
+     5,  5, 10, 25, 25, 10,  5,  5,
+     0,  0,  0, 20, 20,  0,  0,  0,
+     5, -5,-10,  0,  0,-10, -5,  5,
+     5, 10, 10,-20,-20, 10, 10,  5,
+     0,  0,  0,  0,  0,  0,  0,  0,
+];
+
 
 #[cfg(test)]
 mod eval_tests {
@@ -165,7 +178,7 @@ mod eval_tests {
             Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
                 .unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -400.0)
+        assert_eq!(Evaluator::new().eval(&board, BoardStatus::Ongoing, 0), -400.0)
     }
 
     #[test]
@@ -173,93 +186,6 @@ mod eval_tests {
         // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
         let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -85.0)
+        assert_eq!(Evaluator::new().eval(&board, BoardStatus::Ongoing, 0), -85.0)
     }
 }
-
-// #[cfg(test)]
-// mod eval_tests {
-//     use crate::evaluation::eval;
-//     use shakmaty::{Chess, Move, Position, Role, Square};
-
-//     #[test]
-//     fn start_board_test() {
-//         let chess = Chess::new();
-//         assert_eq!(0.0, eval(&chess, false))
-//     }
-
-//     #[test]
-//     fn board_after_taking_pawn_test() {
-//         let chess0 = Chess::new();
-//         let chess1 = chess0
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::E2,
-//                 capture: None,
-//                 to: Square::E4,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         let chess2 = chess1
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::D7,
-//                 capture: None,
-//                 to: Square::D5,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         let chess3 = chess2
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::E4,
-//                 capture: Option::from(Role::Pawn),
-//                 to: Square::D5,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         assert_eq!(100.25, eval(&chess3, false))
-//     }
-
-//     #[test]
-//     fn board_after_taking_2_pawns_test() {
-//         let chess0 = Chess::new();
-//         let chess1 = chess0
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::E2,
-//                 capture: None,
-//                 to: Square::E4,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         let chess2 = chess1
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::D7,
-//                 capture: None,
-//                 to: Square::D5,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         let chess3 = chess2
-//             .play(&Move::Normal {
-//                 role: Role::Pawn,
-//                 from: Square::E4,
-//                 capture: Option::from(Role::Pawn),
-//                 to: Square::D5,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         let chess4 = chess3
-//             .play(&Move::Normal {
-//                 role: Role::Queen,
-//                 from: Square::D8,
-//                 capture: Option::from(Role::Pawn),
-//                 to: Square::D5,
-//                 promotion: None,
-//             })
-//             .unwrap();
-//         assert_eq!(0.0, eval(&chess4, false))
-//     }
-// }

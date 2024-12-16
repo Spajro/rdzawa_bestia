@@ -1,6 +1,6 @@
 use crate::engine::Engine;
 use crate::features::board_utils::{is_insufficient_material, status};
-use crate::features::evaluation::eval;
+use crate::features::Evaluation;
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiescence::quiescence;
@@ -12,14 +12,18 @@ use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
 use std::ops::Add;
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use chess::Piece::King;
+use crate::features::nnue::accumulator::{Accumulator, from};
+use crate::features::nnue::half_kp::HalfKP;
+use crate::features::nnue::network::NNUE;
 use crate::io::uci::Position;
 use crate::features::transposition_table::{EntryType, TranspositionTable};
 use crate::io::options::Options;
 
 pub struct Result {
-    pub(crate) score: f32,
-    pub(crate) chosen_move: Option<ChessMove>,
-    pub(crate) computed: bool,
+    pub score: f32,
+    pub chosen_move: Option<ChessMove>,
+    pub computed: bool,
 }
 
 pub struct MinMaxEngine {
@@ -28,6 +32,7 @@ pub struct MinMaxEngine {
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
+    pub evaluator: NNUE,
 }
 
 impl Engine for MinMaxEngine {
@@ -47,12 +52,15 @@ impl Engine for MinMaxEngine {
                 for mv in moves {
                     self.pos = self.pos.make_move_new(mv)
                 }
+                self.book = OpeningBook::empty();
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
             }
             Position::START => {
                 let mv = moves.last().unwrap();
                 let mov = mv.to_string();
                 self.book = self.book.clone().update(mov);
                 self.pos = self.pos.make_move_new(*mv);
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
             }
         }
     }
@@ -77,9 +85,9 @@ impl Engine for MinMaxEngine {
         let board_status = status(&self.pos, any_legal_move, insufficient_material);
 
         if self.pos.side_to_move() == Color::White {
-            eval(&self.pos, board_status, 0)
+            self.evaluator.eval(&self.pos, board_status, 0)
         } else {
-            -eval(&self.pos, board_status, 0)
+            -self.evaluator.eval(&self.pos, board_status, 0)
         }
     }
 }
@@ -98,6 +106,7 @@ impl MinMaxEngine {
             evaluations_cnt: 0,
             book: OpeningBook::new(options.get_value("openings".to_string()).unwrap_or(&"book.json".to_string())),
             transposition_table: TranspositionTable::new(),
+            evaluator: NNUE::new(),
         }
     }
 
@@ -144,9 +153,9 @@ impl MinMaxEngine {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
-                eval(&pos, board_status, total_depth)
+                self.evaluator.eval(&pos, board_status, total_depth)
             } else {
-                -eval(&pos, board_status, total_depth)
+                -self.evaluator.eval(&pos, board_status, total_depth)
             };
             self.transposition_table.insert(&pos, evl, None, depth, EntryType::EXACT);
             return Result {
@@ -184,6 +193,13 @@ impl MinMaxEngine {
         for (value, next_move) in move_order {
             pos.make_move(next_move, &mut new_pos);
 
+            let features = HalfKP::move_to_features_difference(&next_move, &pos);
+            if pos.piece_on(next_move.get_source()).unwrap() == King {
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&new_pos), from(new_pos.side_to_move()))
+            } else {
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()));
+            }
+
             let mut result: Result = self.negamax(
                 new_pos,
                 depth - 1,
@@ -193,6 +209,13 @@ impl MinMaxEngine {
                 -alpha,
                 end_time,
             );
+
+            if pos.piece_on(next_move.get_source()).unwrap() == King {
+                self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&pos), from(pos.side_to_move()))
+            } else {
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(pos.side_to_move()));
+            }
+
             result.score = -result.score;
 
             if result.computed == false {
