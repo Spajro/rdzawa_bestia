@@ -3,13 +3,14 @@ use chess::{Board, BoardStatus};
 use crate::features::nnue::accumulator::{Accumulator, from, M, not};
 
 pub struct NNUE {
+    pub accumulator: Accumulator,
     pub l_0: LinearLayer,
     pub l_1: LinearLayer,
     pub l_2: LinearLayer,
 }
 
 impl NNUE {
-    pub(crate) fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize, accumulator: &Accumulator) -> f32 {
+    pub(crate) fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
         match board_status {
             BoardStatus::Checkmate => {
                 if board.side_to_move() == chess::Color::White {
@@ -25,8 +26,8 @@ impl NNUE {
                 let mut input: [f32; 2 * M] = [0.0; 2 * M];
                 let stm = from(board.side_to_move());
                 for i in 0..M {
-                    input[i] = accumulator[stm][i];
-                    input[M + i] = accumulator[not(stm)][i];
+                    input[i] = self.accumulator[stm][i];
+                    input[M + i] = self.accumulator[not(stm)][i];
                 }
 
                 let mut curr_output: [f32; 2 * M] = [0.0; 2 * M];
