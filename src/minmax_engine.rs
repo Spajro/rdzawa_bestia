@@ -86,9 +86,9 @@ impl Engine for MinMaxEngine {
         let board_status = status(&self.pos, any_legal_move, insufficient_material);
 
         if self.pos.side_to_move() == Color::White {
-            eval(&self.pos, board_status, 0)
+            self.evaluator.eval(&self.pos, board_status, 0, &self.accumulator)
         } else {
-            -eval(&self.pos, board_status, 0)
+            -self.evaluator.eval(&self.pos, board_status, 0, &self.accumulator)
         }
     }
 }
