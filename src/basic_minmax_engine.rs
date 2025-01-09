@@ -70,7 +70,7 @@ impl Engine for BasicMinMaxEngine {
 }
 
 impl BasicMinMaxEngine {
-    pub fn _new(pos: Board, options: &Options) -> Self {
+    pub fn new(pos: Board, options: &Options) -> Self {
         BasicMinMaxEngine {
             pos: pos,
             evaluations_cnt: 0,
@@ -95,7 +95,7 @@ impl BasicMinMaxEngine {
         let insufficient_material = is_insufficient_material(&pos);
 
         let board_status = status(&pos, any_legal_move, insufficient_material);
-        if board_status != BoardStatus::Ongoing {
+        if board_status != BoardStatus::Ongoing || depth == 0 {
             self.evaluations_cnt += 1;
 
             let evl = if pos.side_to_move() == Color::White {
