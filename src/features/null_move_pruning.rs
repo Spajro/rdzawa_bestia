@@ -45,5 +45,5 @@ pub fn can_apply_null_move(depth: usize, pos: Board) -> bool {
         ^ pos.pieces(Piece::King)
         ^ pos.pieces(Piece::Pawn))
     .popcnt();
-    return depth > NULL_MOVE_DEPTH_REDUCTION && non_pawns_on_board > 0;
+    return depth > NULL_MOVE_DEPTH_REDUCTION && non_pawns_on_board > 0 && pos.checkers().popcnt() == 0;
 }
