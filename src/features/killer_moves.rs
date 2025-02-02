@@ -1,5 +1,3 @@
-use std::f32::consts::SQRT_2;
-
 use arrayvec::ArrayVec;
 use chess::{ChessMove, Square};
 
