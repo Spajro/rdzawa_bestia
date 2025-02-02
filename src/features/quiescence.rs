@@ -9,8 +9,8 @@ pub fn quiescence(
     pos: Board,
     qdepth: usize,
     total_depth: usize,
-    mut alpha: f32,
-    beta: f32,
+    mut alpha: i32,
+    beta: i32,
     end_time: Instant,
 ) -> Result {
     if (engine.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {

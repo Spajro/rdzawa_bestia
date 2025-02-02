@@ -100,52 +100,52 @@ fn get_pieces_value(board: &Board, board_side: &BitBoard) -> u32 {
         + 900 * (board.pieces(Piece::Queen) & board_side).popcnt()
 }
 
-pub fn get_position_cumulative_value(board: &Board, color: Color) -> f32 {
+pub fn get_position_cumulative_value(board: &Board, color: Color) -> i32 {
     let color_board = board.color_combined(color);
     let king_pos_val = (color_board & board.pieces(Piece::King))
         .into_iter()
         .map(|sq| get_sq_val(sq, KING_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
     let queen_pos_val = (color_board & board.pieces(Piece::Queen))
         .into_iter()
         .map(|sq| get_sq_val(sq, QUEEN_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
     let rooks_pos_val = (color_board & board.pieces(Piece::Rook))
         .into_iter()
         .map(|sq| get_sq_val(sq, ROOK_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
     let bishops_pos_val = (color_board & board.pieces(Piece::Bishop))
         .into_iter()
         .map(|sq| get_sq_val(sq, BISHOP_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
     let knights_pos_val = (color_board & board.pieces(Piece::Knight))
         .into_iter()
         .map(|sq| get_sq_val(sq, KNIGHT_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
     let pawns_pos_val = (color_board & board.pieces(Piece::Pawn))
         .into_iter()
         .map(|sq| get_sq_val(sq, PAWN_SQUARE_TABLE, color))
-        .sum::<i32>() as f32;
+        .sum::<i32>() as i32;
 
     king_pos_val + queen_pos_val + rooks_pos_val + bishops_pos_val + knights_pos_val + pawns_pos_val
 }
 
-pub fn eval(board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
+pub fn eval(board: &Board, board_status: BoardStatus, depth: usize) -> i32 {
     match board_status {
         BoardStatus::Checkmate => {
             if board.side_to_move() == Color::White {
-                -1e9 + 100.0 * depth as f32
+                -1e9 as i32 + 100 * depth as i32
             } else {
-                1e9 - 100.0 * depth as f32
+                1e9 as i32 - 100 * depth as i32
             }
         }
 
-        BoardStatus::Stalemate => 0.0,
+        BoardStatus::Stalemate => 0,
 
         BoardStatus::Ongoing => {
             let white_value = get_pieces_value(board, board.color_combined(Color::White));
             let black_value = get_pieces_value(board, board.color_combined(Color::Black));
-            white_value as f32 - black_value as f32
+            white_value as i32 - black_value as i32
                 + get_position_cumulative_value(board, Color::White)
                 - get_position_cumulative_value(board, Color::Black)
         }
@@ -165,7 +165,7 @@ mod eval_tests {
             Board::from_str("r1b2b1r/pp3Qp1/2nkn2p/3ppP1p/P1p5/1NP1NB2/1PP1PPR1/1K1R3q w - - 0 1")
                 .unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -400.0)
+        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -400)
     }
 
     #[test]
@@ -173,7 +173,7 @@ mod eval_tests {
         // https://www.chess.com/forum/view/livechess/practice-your-checkmate-in-4-moves-in-24-puzzles
         let board = Board::from_str("r4r1k/1R1R2p1/7p/8/8/3Q1Ppq/P7/6K1 w - - 0 1").unwrap();
         // println!("board: {:?}", board);
-        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -85.0)
+        assert_eq!(eval(&board, BoardStatus::Ongoing, 0), -85)
     }
 }
 

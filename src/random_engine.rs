@@ -1,5 +1,5 @@
 use chess::{Board, ChessMove, MoveGen};
-use crate::engine::{Engine};
+use crate::engine::Engine;
 use crate::io::output::send_move;
 use rand::seq::SliceRandom;
 use crate::io::uci::Position;
@@ -25,8 +25,8 @@ impl Engine for RandomEngine {
         self.pos = Board::default();
     }
 
-    fn evaluate(&self) -> f32 {
-        0.0
+    fn evaluate(&self) -> i32 {
+        0
     }
 }
 

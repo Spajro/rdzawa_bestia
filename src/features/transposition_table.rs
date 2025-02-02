@@ -33,7 +33,7 @@ pub enum EntryType {
 pub struct TableEntry {
     pub key: FullHash,
     pub mv: Option<ChessMove>,
-    pub score: f32,
+    pub score: i32,
     pub depth: usize,
     pub entry_type: EntryType,
 }
@@ -47,7 +47,7 @@ impl TranspositionTable {
             rand: rand::thread_rng(),
         }
     }
-    pub fn insert(&mut self, pos: &Board, score: f32, mv: Option<ChessMove>, depth: usize, entry_type: EntryType) {
+    pub fn insert(&mut self, pos: &Board, score: i32, mv: Option<ChessMove>, depth: usize, entry_type: EntryType) {
         if self.max_size <= self.map.len() {
             self.remove();
         }

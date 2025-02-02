@@ -27,7 +27,7 @@ pub fn null_move(
     }
 
     let new_pos = pos.null_move();
-    
+
     let mut result: Result = engine.negamax(
         new_pos.unwrap(),
         depth - NULL_MOVE_DEPTH_REDUCTION,
