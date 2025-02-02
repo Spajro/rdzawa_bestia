@@ -4,6 +4,7 @@ use crate::features::evaluation::eval;
 use crate::features::killer_moves::KillerMoves;
 use crate::features::opening_book::OpeningBook;
 use crate::features::quiescence::quiescence;
+use crate::features::null_move_pruning::null_move;
 use crate::features::time_management::default_time_manager;
 use crate::io::output::send_info;
 use crate::io::output::send_move;
@@ -17,7 +18,7 @@ use crate::features::transposition_table::{EntryType, TranspositionTable};
 use crate::io::options::Options;
 
 pub struct Result {
-    pub(crate) score: f32,
+    pub(crate) score: i32,
     pub(crate) chosen_move: Option<ChessMove>,
     pub(crate) computed: bool,
 }
@@ -69,7 +70,7 @@ impl Engine for MinMaxEngine {
         }
     }
 
-    fn evaluate(&self) -> f32 {
+    fn evaluate(&self) -> i32 {
         let moves_generator = MoveGen::new_legal(&self.pos);
         let any_legal_move = moves_generator.size_hint().0 > 0;
         let insufficient_material = is_insufficient_material(&self.pos);
@@ -101,15 +102,16 @@ impl MinMaxEngine {
         }
     }
 
-    fn negamax(
+    pub fn negamax(
         &mut self,
         pos: Board,
         depth: usize,
         qdepth: usize,
         total_depth: usize,
-        mut alpha: f32,
-        mut beta: f32,
+        mut alpha: i32,
+        mut beta: i32,
         end_time: Instant,
+        is_last_null_move: bool
     ) -> Result {
         if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
             return Result {
@@ -124,7 +126,8 @@ impl MinMaxEngine {
             let entry = transposition_entry.unwrap();
             if entry.depth >= depth {
                 match entry.entry_type {
-                    EntryType::EXACT => return Result {
+                    EntryType::EXACT => 
+                    return Result {
                         score: entry.score,
                         chosen_move: entry.mv,
                         computed: true,
@@ -160,6 +163,12 @@ impl MinMaxEngine {
             return quiescence(self, pos, qdepth, total_depth, alpha, beta, end_time);
         }
 
+        
+        let nm_result =  null_move(self, pos, depth, qdepth, total_depth, beta, end_time, is_last_null_move);
+        if nm_result.prunned {
+            return Result {score: beta, chosen_move: nm_result.chosen_move, computed: true};
+        }
+
         let km_min_value = 1e6;
         let km_size: f32 = Self::KILLER_MOVES_SIZE as f32;
         // move ordering (killer moves first)
@@ -192,6 +201,7 @@ impl MinMaxEngine {
                 -beta,
                 -alpha,
                 end_time,
+                false
             );
             result.score = -result.score;
 
@@ -239,18 +249,18 @@ impl MinMaxEngine {
         }
 
         let mut depth = 1;
-        let mut estimation = 0.0;
-        let delta = 30.0; // 0.3 of the pawn
-        let pos_inf = 1e9;
-        let neg_inf = -1e9;
+        let mut estimation = 0;
+        let delta = 30; // 0.3 of the pawn
+        let pos_inf = 1e9 as i32;
+        let neg_inf = -1e9 as i32;
         // let mut best_score = -1e9;
         let mut best_move: Option<ChessMove> = MoveGen::new_legal(&self.pos).next();
         let end_time = Instant::now().add(Duration::from_millis(default_time_manager(time)));
 
         while depth < Self::MAX_DEPTH {
             send_info(String::from("Depth:") + &*depth.to_string());
-            let alpha: f32 = estimation - delta;
-            let beta: f32 = estimation + delta;
+            let alpha: i32 = estimation - delta;
+            let beta: i32 = estimation + delta;
             let qdepth = 2 * depth;
 
             let mut result;
@@ -263,9 +273,10 @@ impl MinMaxEngine {
                     neg_inf,
                     pos_inf,
                     end_time,
+                    false
                 );
             } else {
-                result = self.negamax(self.pos.clone(), depth, qdepth, 0, alpha, beta, end_time);
+                result = self.negamax(self.pos.clone(), depth, qdepth, 0, alpha, beta, end_time, false);
 
                 if result.score >= beta {
                     result = self.negamax(
@@ -276,6 +287,7 @@ impl MinMaxEngine {
                         result.score,
                         pos_inf,
                         end_time,
+                        false
                     );
                 } else if result.score <= alpha {
                     result = self.negamax(
@@ -286,6 +298,7 @@ impl MinMaxEngine {
                         neg_inf,
                         result.score,
                         end_time,
+                        false
                     );
                 }
 
@@ -298,6 +311,7 @@ impl MinMaxEngine {
                         neg_inf,
                         pos_inf,
                         end_time,
+                        false
                     );
                 }
             }
@@ -332,7 +346,7 @@ mod mod_minmax_tests {
         let start_time = Instant::now();
         let max_time = start_time.add(Duration::from_secs(60 * 10));
         let depth = 8;
-        let result = engine.negamax(pos, depth, 2 * depth, 0, -1e9, 1e9, max_time);
+        let result = engine.negamax(pos, depth, 2 * depth, 0, -1e9 as i32, 1e9 as i32, max_time, false);
         let duration = Instant::now().duration_since(start_time);
 
         println!("best move: {:?}", result.chosen_move);
@@ -361,7 +375,7 @@ mod mod_minmax_tests {
         let end_time = Instant::now().add(Duration::from_secs(60 * 10));
         let pos = Board::from_str("r1b2r1k/4qp1p/p1Nppb1Q/4nP2/1p2P3/2N5/PPP4P/2KR1BR1 b - - 5 18")
             .unwrap();
-        quiescence(&mut engine, pos, 10, 0, -1e9, 1e9, end_time);
+        quiescence(&mut engine, pos, 10, 0, -1e9 as i32, 1e9 as i32, end_time);
     }
 }
 
@@ -409,7 +423,7 @@ mod checkmate_tests {
             let max_time = start_time.add(Duration::from_secs(60 * 10));
 
             // quiescence has to be disabled!
-            let result = engine.negamax(board, depth, 0, 0, -1e9, 1e9, max_time);
+            let result = engine.negamax(board, depth, 0, 0, -1e9 as i32, 1e9 as i32, max_time, false);
 
             let duration = Instant::now().duration_since(start_time);
             println!(
@@ -418,9 +432,9 @@ mod checkmate_tests {
             );
 
             if depth < expected_depth {
-                assert!(result.score.abs() < 1e8);
+                assert!(result.score.abs() < 1e8 as i32);
             } else {
-                assert!(result.score > 1e8);
+                assert!(result.score > 1e8 as i32);
             }
         }
     }
