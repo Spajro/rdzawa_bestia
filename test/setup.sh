@@ -53,12 +53,15 @@ if [ "$machine" == MinGw  ]; then
     stockfish_path=stockfish/stockfish-windows-x86-64-avx2
 fi
 
+openings_path=../resources/book.json
+
 python3 -m pip install zstandard
 python3 -m pip install stockfish
 python3 -m pip install chess
 
 python3 chess_engine_evaluator/setup.py stockfish $stockfish_path
 python3 chess_engine_evaluator/setup.py uci rdzawa_bestia $engine_path
+python3 chess_engine_evaluator/setup.py option rdzawa_bestia openings $openings_path
 python3 chess_engine_evaluator/setup.py puzzles
 
 deactivate
