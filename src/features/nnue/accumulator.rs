@@ -51,45 +51,37 @@ impl Accumulator {
             v: [[0.0; 128]; 2],
         }
     }
-    pub fn refresh<const IN: usize, const OUT: usize>(layer: &LinearLayer<IN, OUT>,
-                                                                      active_features: &Vec<usize>,
-                                                                      perspective: Color,
-    ) -> Accumulator {
-        let mut new_acc = Accumulator::new();
-
-        for i in 1..M {
-            new_acc[perspective][i] = layer.bias[i];
+    pub fn refresh<const IN: usize, const OUT: usize>(
+        &mut self,
+        layer: &LinearLayer<IN, OUT>,
+        active_features: &Vec<usize>,
+        perspective: Color,
+    ) {
+        for i in 0..M {
+            self[perspective][i] = layer.bias[i];
         }
         for feature in active_features {
-            for i in 1..M {
-                new_acc[perspective][i] += layer.weight[i][*feature];
+            for i in 0..M {
+                self[perspective][i] += layer.weight[i][*feature];
             }
         }
-        new_acc
     }
 
     pub fn update<const IN: usize, const OUT: usize>(&mut self,
-                                                                     layer: &LinearLayer<IN, OUT>,
-                                                                     active_features: &Vec<usize>,
-                                                                     removed_features: &Vec<usize>,
-                                                                     perspective: Color,
-    ) -> Accumulator {
-        let mut new_acc = Accumulator::new();
-
-        for i in 1..M {
-            new_acc[perspective][i] = self[perspective][i];
-        }
-
+                                                     layer: &LinearLayer<IN, OUT>,
+                                                     active_features: &Vec<usize>,
+                                                     removed_features: &Vec<usize>,
+                                                     perspective: Color,
+    ) {
         for feature in removed_features {
             for i in 1..M {
-                new_acc[perspective][i] -= layer.weight[i][*feature];
+                self[perspective][i] -= layer.weight[i][*feature];
             }
         }
         for feature in active_features {
             for i in 1..M {
-                new_acc[perspective][i] += layer.weight[i][*feature];
+                self[perspective][i] += layer.weight[i][*feature];
             }
         }
-        new_acc
     }
 }

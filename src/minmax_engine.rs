@@ -10,9 +10,10 @@ use crate::io::output::send_info;
 use crate::io::output::send_move;
 use arrayvec::ArrayVec;
 use chess::{Board, BoardStatus, ChessMove, Color, MoveGen};
-use std::ops::Add;
+use std::ops::{Add, Not};
 use std::str::FromStr;
 use std::time::{Duration, Instant};
+use chess::Color::{Black, White};
 use chess::Piece::King;
 use crate::features::nnue::accumulator::{Accumulator, from};
 use crate::features::nnue::depickle::load_state;
@@ -63,7 +64,9 @@ impl Engine for MinMaxEngine {
                 self.pos = self.pos.make_move_new(*mv);
             }
         }
-        self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
+        let (white_features, black_features) = &HalfKP::board_to_feature_set(&self.pos);
+        self.evaluator.accumulator.refresh(&self.evaluator.l_0, white_features, from(White));
+        self.evaluator.accumulator.refresh(&self.evaluator.l_0, black_features, from(Black));
     }
 
     fn restart(&mut self) {
@@ -76,7 +79,9 @@ impl Engine for MinMaxEngine {
         for _ in 0..Self::MAX_DEPTH {
             self.killer_moves.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
         }
-        self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
+        let (white_features, black_features) = &HalfKP::board_to_feature_set(&self.pos);
+        self.evaluator.accumulator.refresh(&self.evaluator.l_0, white_features, from(White));
+        self.evaluator.accumulator.refresh(&self.evaluator.l_0, black_features, from(Black));
     }
 
     fn evaluate(&self) -> i32 {
@@ -164,7 +169,7 @@ impl MinMaxEngine {
         if board_status != BoardStatus::Ongoing {
             self.evaluations_cnt += 1;
 
-            let evl = if pos.side_to_move() == Color::White {
+            let evl = if pos.side_to_move() == White {
                 self.evaluator.eval(&pos, board_status, total_depth, accumulator)
             } else {
                 -self.evaluator.eval(&pos, board_status, total_depth, accumulator)
@@ -211,13 +216,22 @@ impl MinMaxEngine {
         for (value, next_move) in move_order {
             pos.make_move(next_move, &mut new_pos);
 
-            let accumulator = if pos.piece_on(next_move.get_source()).unwrap() == King {
-                Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&new_pos), from(new_pos.side_to_move()))
-            } else {
-                let features = HalfKP::move_to_features_difference(&next_move, &pos);
-                self.evaluator.accumulator.update(&self.evaluator.l_0, &features.added, &features.removed, from(pos.side_to_move()))
-            };
+            let mut new_acc = accumulator.clone();
+            let (white_features, black_features) = &HalfKP::board_to_feature_set(&new_pos);
+            let (white_diff, black_diff) = HalfKP::move_to_features_difference(&next_move, &pos);
 
+            if pos.piece_on(next_move.get_source()).unwrap() == King {
+                if pos.side_to_move() == White {
+                    new_acc.refresh(&self.evaluator.l_0, white_features, from(White));
+                    new_acc.update(&self.evaluator.l_0, &black_diff.added, &black_diff.removed, from(Black));
+                } else {
+                    new_acc.refresh(&self.evaluator.l_0, black_features, from(Black));
+                    new_acc.update(&self.evaluator.l_0, &white_diff.added, &white_diff.removed, from(White));
+                };
+            } else {
+                new_acc.update(&self.evaluator.l_0, &white_diff.added, &white_diff.removed, from(White));
+                new_acc.update(&self.evaluator.l_0, &black_diff.added, &black_diff.removed, from(Black));
+            }
             let mut result: Result = self.negamax(
                 new_pos,
                 depth - 1,
@@ -227,7 +241,7 @@ impl MinMaxEngine {
                 -alpha,
                 end_time,
                 false,
-                &accumulator,
+                &new_acc.clone(),
             );
 
             result.score = -result.score;
@@ -368,14 +382,25 @@ impl MinMaxEngine {
         }
         send_info(String::from("Final depth:") + &*depth.to_string());
         let chosen_move = best_move.unwrap();
+        let new_pos = self.pos.make_move_new(chosen_move);
+
+        let (white_features, black_features) = &HalfKP::board_to_feature_set(&new_pos);
+        let (white_diff, black_diff) = HalfKP::move_to_features_difference(&chosen_move, &self.pos);
 
         if self.pos.piece_on(chosen_move.get_source()).unwrap() == King {
-            self.evaluator.accumulator = Accumulator::refresh(&self.evaluator.l_0, &HalfKP::board_to_feature_set(&self.pos), from(self.pos.side_to_move()))
+            if self.pos.side_to_move() == White {
+                self.evaluator.accumulator.refresh(&self.evaluator.l_0, white_features, from(White));
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &black_diff.added, &black_diff.removed, from(Black));
+            } else {
+                self.evaluator.accumulator.refresh(&self.evaluator.l_0, black_features, from(Black));
+                self.evaluator.accumulator.update(&self.evaluator.l_0, &white_diff.added, &white_diff.removed, from(White));
+            };
         } else {
-            let features = HalfKP::move_to_features_difference(&chosen_move, &self.pos);
-            self.evaluator.accumulator.update(&self.evaluator.l_0, &features.removed, &features.added, from(self.pos.side_to_move()));
-        }
-        self.pos = self.pos.make_move_new(chosen_move);
+            self.evaluator.accumulator.update(&self.evaluator.l_0, &white_diff.added, &white_diff.removed, from(White));
+            self.evaluator.accumulator.update(&self.evaluator.l_0, &black_diff.added, &black_diff.removed, from(Black));
+        };
+        
+        self.pos = new_pos;
         // eval(&self.pos, true);
         chosen_move.clone()
     }
