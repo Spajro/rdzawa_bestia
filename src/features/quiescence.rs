@@ -34,9 +34,9 @@ pub fn quiescence(
     let board_status = status(&pos, any_legal_move, insufficient_material);
 
     let stand_pat = if pos.side_to_move() == Color::White {
-        engine.evaluator.eval(&pos, board_status, total_depth)
+        engine.evaluator.eval(&pos, board_status, total_depth,&engine.evaluator.accumulator)
     } else {
-        -engine.evaluator.eval(&pos, board_status, total_depth)
+        -engine.evaluator.eval(&pos, board_status, total_depth,&engine.evaluator.accumulator)
     };
 
     if stand_pat >= beta {

@@ -56,20 +56,20 @@ impl NeuralEvaluator {
 }
 
 impl Evaluation for NeuralEvaluator {
-    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32 {
+    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> i32 {
         match board_status {
             BoardStatus::Checkmate => {
                 if board.side_to_move() == Color::White {
-                    -1e9 + 100.0 * depth as f32
+                    -1e9 as i32+ 100 * depth as i32
                 } else {
-                    1e9 - 100.0 * depth as f32
+                    1e9 as i32 - 100 * depth as i32
                 }
             }
 
-            BoardStatus::Stalemate => 0.0,
+            BoardStatus::Stalemate => 0,
 
             BoardStatus::Ongoing => {
-                self.model.forward(&board_to_tensor(board).reshape([-1])).double_value(&[0]) as f32
+                self.model.forward(&board_to_tensor(board).reshape([-1])).double_value(&[0]) as i32
             }
         }
     }

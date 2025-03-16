@@ -37,6 +37,7 @@ pub fn null_move(
         -(beta - 1),
         end_time,
         true,
+        &engine.evaluator.accumulator.clone()
     );
     result.score = -result.score;
 

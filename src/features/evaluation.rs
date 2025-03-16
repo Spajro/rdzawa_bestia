@@ -10,7 +10,7 @@ impl Evaluator {
 }
 
 impl Evaluation for Evaluator {
-    pub fn eval(&self,board: &Board, board_status: BoardStatus, depth: usize) -> i32 {
+    fn eval(&self,board: &Board, board_status: BoardStatus, depth: usize) -> i32 {
         match board_status {
             BoardStatus::Checkmate => {
                 if board.side_to_move() == Color::White {

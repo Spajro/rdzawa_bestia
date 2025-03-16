@@ -2,7 +2,7 @@ use chess::{Board, ChessMove, Piece, Square};
 
 pub struct HalfKP {}
 
-struct FeaturesDifference {
+pub struct FeaturesDifference {
     pub added: Vec<usize>,
     pub removed: Vec<usize>,
 }

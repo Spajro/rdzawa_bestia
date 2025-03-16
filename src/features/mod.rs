@@ -12,5 +12,5 @@ pub mod neural_evaluation;
 pub mod nnue;
 
 pub trait Evaluation {
-    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> f32;
+    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> i32;
 }
