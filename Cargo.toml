@@ -11,6 +11,8 @@ chess = "3.2.0"
 json = "0.12.4"
 test-case = "3.3.1"
 tch = "0.18.0"
+serde = "1.0"
+serde-pickle = "1.2"
 
 #[profile.release]
 #debug = true
