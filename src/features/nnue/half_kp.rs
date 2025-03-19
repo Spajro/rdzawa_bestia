@@ -1,4 +1,5 @@
 use chess::{Board, ChessMove, Piece, Square};
+use chess::Color::{Black, White};
 
 pub struct HalfKP {}
 
@@ -18,8 +19,8 @@ impl FeaturesDifference {
 
 impl HalfKP {
     pub fn board_to_feature_set(board: &Board) -> (Vec<usize>, Vec<usize>) {
-        let white_king = board.king_square(chess::Color::White);
-        let black_king = board.king_square(chess::Color::Black);
+        let white_king = board.king_square(White);
+        let black_king = board.king_square(Black);
         let mut white_features = Vec::new();
         let mut black_features = Vec::new();
 
@@ -34,30 +35,24 @@ impl HalfKP {
     pub fn move_to_features_difference(chess_move: &ChessMove,
                                        board: &Board,
     ) -> (FeaturesDifference, FeaturesDifference) {
-        let white_king = board.king_square(chess::Color::White);
-        let black_king = board.king_square(chess::Color::Black);
-        let piece_type = board.piece_on(chess_move.get_source()).unwrap();
+        let white_king = board.king_square(White);
+        let black_king = board.king_square(Black);
+        let mut piece_type = board.piece_on(chess_move.get_source()).unwrap();
         let mut white_result = FeaturesDifference::new();
         let mut black_result = FeaturesDifference::new();
 
 
         if chess_move.get_promotion().is_some() {
-            let (white_idx, black_idx) = Self::generate_indexes(chess_move.get_promotion().unwrap(),
-                                                                board.side_to_move(),
-                                                                chess_move.get_dest(),
-                                                                white_king,
-                                                                black_king);
-            white_result.added.push(white_idx);
-            black_result.added.push(black_idx);
-        } else {
-            let (white_idx, black_idx) = Self::generate_indexes(piece_type,
-                                                                board.side_to_move(),
-                                                                chess_move.get_dest(),
-                                                                white_king,
-                                                                black_king);
-            white_result.added.push(white_idx);
-            black_result.added.push(black_idx);
+            piece_type = chess_move.get_promotion().unwrap();
         }
+        
+        let (white_idx, black_idx) = Self::generate_indexes(piece_type,
+                                                            board.side_to_move(),
+                                                            chess_move.get_dest(),
+                                                            white_king,
+                                                            black_king);
+        white_result.added.push(white_idx);
+        black_result.added.push(black_idx);
 
         let (white_idx, black_idx) = Self::generate_indexes(piece_type,
                                                             board.side_to_move(),
@@ -77,7 +72,7 @@ impl HalfKP {
             white_result.removed.push(white_idx);
             black_result.removed.push(black_idx);
         }
-        (white_result,black_result)
+        (white_result, black_result)
     }
 
     fn gather_pieces_from_board(board: &Board) -> Vec<(Piece, chess::Color, Square)> {
