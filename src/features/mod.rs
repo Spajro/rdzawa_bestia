@@ -1,3 +1,5 @@
+use chess::{Board, BoardStatus};
+
 pub mod board_utils;
 pub mod evaluation;
 pub mod killer_moves;
@@ -6,3 +8,9 @@ pub mod opening_book;
 pub mod quiescence;
 pub mod time_management;
 pub mod transposition_table;
+pub mod neural_evaluation;
+pub mod nnue;
+
+pub trait Evaluation {
+    fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize) -> i32;
+}
