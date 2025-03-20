@@ -1,3 +1,4 @@
+use std::ops::Not;
 use chess::{Board, ChessMove, Piece, Square};
 use chess::Color::{Black, White};
 
@@ -92,7 +93,7 @@ impl HalfKP {
                         piece_square: Square,
                         white_king: Square,
                         black_king: Square) -> (usize, usize) {
-        let p_idx = piece_type.to_index() * 2 + piece_color.to_index();
+        let p_idx = (piece_type.to_index() + 1) * 2 + piece_color.not().to_index(); //TEMPORARY FIX
         let white_idx = piece_square.to_index() + (p_idx + white_king.to_index() * 10) * 64;
         let black_idx = piece_square.to_index() + (p_idx + black_king.to_index() * 10) * 64;
         return (white_idx, black_idx);

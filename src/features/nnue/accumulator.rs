@@ -9,7 +9,7 @@ pub const M: usize = 128;
 type Color = usize;
 
 const WHITE: Color = 1;
-const BLACK: Color = 0;
+pub const BLACK: Color = 0;
 
 pub fn not(color: Color) -> Color {
     if color == WHITE {
@@ -28,11 +28,11 @@ pub fn from(color: chess::Color) -> Color {
 
 #[derive(Clone)]
 pub struct Accumulator {
-    v: [[f32; M]; 2],
+    v: [[f64; M]; 2],
 }
 
 impl Index<usize> for Accumulator {
-    type Output = [f32; M];
+    type Output = [f64; M];
 
     fn index(&self, index: Color) -> &Self::Output {
         &self.v[index]
@@ -48,7 +48,7 @@ impl IndexMut<usize> for Accumulator {
 impl Accumulator {
     pub fn new() -> Self {
         Accumulator {
-            v: [[0.0; 128]; 2],
+            v: [[0.0; M]; 2],
         }
     }
     pub fn refresh<const IN: usize, const OUT: usize>(
@@ -60,9 +60,10 @@ impl Accumulator {
         for i in 0..M {
             self[perspective][i] = layer.bias[i];
         }
-        for feature in active_features {
+
+        for &feature in active_features {
             for i in 0..M {
-                self[perspective][i] += layer.weight[i][*feature];
+                self[perspective][i] += layer.weight[i][feature];
             }
         }
     }
@@ -73,14 +74,14 @@ impl Accumulator {
                                                      removed_features: &Vec<usize>,
                                                      perspective: Color,
     ) {
-        for feature in removed_features {
-            for i in 1..M {
-                self[perspective][i] -= layer.weight[i][*feature];
+        for &feature in removed_features {
+            for i in 0..M {
+                self[perspective][i] -= layer.weight[i][feature];
             }
         }
-        for feature in active_features {
-            for i in 1..M {
-                self[perspective][i] += layer.weight[i][*feature];
+        for &feature in active_features {
+            for i in 0..M {
+                self[perspective][i] += layer.weight[i][feature];
             }
         }
     }

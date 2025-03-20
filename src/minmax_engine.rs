@@ -108,12 +108,16 @@ impl MinMaxEngine {
             km.push(KillerMoves::<{ Self::KILLER_MOVES_SIZE }>::new());
         }
         let nnue_wb = load_state::<{ 2 * 40960 }, 256, 32>(options.get_value("nnuewb".to_string()).unwrap_or(&"wb.pt".to_string()));
-        let evaluator = if nnue_wb.is_some() {
+        let mut evaluator = if nnue_wb.is_some() {
             let wb = nnue_wb.unwrap();
             NNUE::new(wb.0, wb.1, wb.2, wb.3, wb.4, wb.5)
         } else {
             NNUE::empty()
         };
+        let (white_features, black_features) = &HalfKP::board_to_feature_set(&pos);
+        evaluator.accumulator.refresh(&evaluator.l_0, white_features, from(White));
+        evaluator.accumulator.refresh(&evaluator.l_0, black_features, from(Black));
+
         MinMaxEngine {
             pos: pos,
             killer_moves: km,
@@ -399,7 +403,7 @@ impl MinMaxEngine {
             self.evaluator.accumulator.update(&self.evaluator.l_0, &white_diff.added, &white_diff.removed, from(White));
             self.evaluator.accumulator.update(&self.evaluator.l_0, &black_diff.added, &black_diff.removed, from(Black));
         };
-        
+
         self.pos = new_pos;
         // eval(&self.pos, true);
         chosen_move.clone()
