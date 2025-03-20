@@ -3,9 +3,6 @@ use features::nnue::network;
 use network::LinearLayer;
 use crate::features;
 
-
-pub const M: usize = 128;
-
 type Color = usize;
 
 const WHITE: Color = 1;
@@ -27,11 +24,11 @@ pub fn from(color: chess::Color) -> Color {
 }
 
 #[derive(Clone)]
-pub struct Accumulator {
+pub struct Accumulator<const M:usize> {
     v: [[f64; M]; 2],
 }
 
-impl Index<usize> for Accumulator {
+impl<const M:usize> Index<usize> for Accumulator<M> {
     type Output = [f64; M];
 
     fn index(&self, index: Color) -> &Self::Output {
@@ -39,13 +36,13 @@ impl Index<usize> for Accumulator {
     }
 }
 
-impl IndexMut<usize> for Accumulator {
+impl<const M:usize> IndexMut<usize> for Accumulator<M> {
     fn index_mut(&mut self, index: Color) -> &mut Self::Output {
         &mut self.v[index]
     }
 }
 
-impl Accumulator {
+impl<const M:usize> Accumulator<M> {
     pub fn new() -> Self {
         Accumulator {
             v: [[0.0; M]; 2],

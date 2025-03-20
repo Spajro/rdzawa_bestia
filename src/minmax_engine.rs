@@ -35,7 +35,7 @@ pub struct MinMaxEngine {
     pub evaluations_cnt: i32,
     pub book: OpeningBook,
     pub transposition_table: TranspositionTable,
-    pub evaluator: NNUE<{ 2 * 40960 }, 256, 32>,
+    pub evaluator: NNUE<128,{ 2 * 40960 }, 256, 32>,
 }
 
 impl Engine for MinMaxEngine {
@@ -138,7 +138,7 @@ impl MinMaxEngine {
         mut beta: i32,
         end_time: Instant,
         is_last_null_move: bool,
-        accumulator: &Accumulator,
+        accumulator: &Accumulator<128>,
     ) -> Result {
         if (self.evaluations_cnt & 511) == 0 && end_time <= Instant::now() {
             return Result {

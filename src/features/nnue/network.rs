@@ -4,18 +4,18 @@ use chess::{Board, BoardStatus, ChessMove, MoveGen};
 use chess::Color::{Black, White};
 
 use crate::features::board_utils::{is_insufficient_material, status};
-use crate::features::nnue::accumulator::{Accumulator, from, M, not};
+use crate::features::nnue::accumulator::{Accumulator, from, not};
 use crate::features::nnue::depickle::load_state;
 use crate::features::nnue::half_kp::HalfKP;
 
-pub struct NNUE<const X0: usize, const X1: usize, const X2: usize> {
-    pub accumulator: Accumulator,
+pub struct NNUE<const M: usize, const X0: usize, const X1: usize, const X2: usize> {
+    pub accumulator: Accumulator<M>,
     pub l_0: LinearLayer<X0, X1>,
     pub l_1: LinearLayer<X1, X2>,
     pub l_2: LinearLayer<X2, 1>,
 }
 
-impl<const X0: usize, const X1: usize, const X2: usize> NNUE<X0, X1, X2> {
+impl<const M: usize, const X0: usize, const X1: usize, const X2: usize> NNUE<M, X0, X1, X2> {
     pub fn empty() -> Self {
         NNUE {
             accumulator: Accumulator::new(),
@@ -34,7 +34,7 @@ impl<const X0: usize, const X1: usize, const X2: usize> NNUE<X0, X1, X2> {
             l_2: LinearLayer::new(weight3, bias3),
         }
     }
-    pub fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize, accumulator: &Accumulator) -> i32 {
+    pub fn eval(&self, board: &Board, board_status: BoardStatus, depth: usize, accumulator: &Accumulator<M>) -> i32 {
         match board_status {
             BoardStatus::Checkmate => {
                 if board.side_to_move() == White {
@@ -47,8 +47,8 @@ impl<const X0: usize, const X1: usize, const X2: usize> NNUE<X0, X1, X2> {
             BoardStatus::Stalemate => 0,
 
             BoardStatus::Ongoing => {
-                let mut curr_output: [f64; 2 * M] = [0.0; 2 * M];
-                let mut curr_input: [f64; 2 * M] = [0.0; 2 * M];
+                let mut curr_output: [f64; X1] = [0.0; X1];
+                let mut curr_input: [f64; X1] = [0.0; X1];
 
                 let stm = from(board.side_to_move());
                 for i in 0..M {
@@ -87,7 +87,7 @@ impl<const X0: usize, const X1: usize, const X2: usize> NNUE<X0, X1, X2> {
             BoardStatus::Ongoing => {
                 let (white_features, black_features) = &HalfKP::board_to_feature_set(&board);
                 let mut curr_input: [f64; { 2 * 40960 }] = [0.0; { 2 * 40960 }];
-                let mut curr_output: [f64; 2 * M] = [0.0; 2 * M];
+                let mut curr_output: [f64; X1] = [0.0; X1];
 
                 for &feature in white_features {
                     curr_input[feature] = 1.0;
@@ -171,8 +171,8 @@ impl<const IN: usize, const OUT: usize> LinearLayer<IN, OUT> {
 fn test() {
     let nnue_wb = load_state::<{ 2 * 40960 }, 256, 32>(&"resources/halfkp2-cp-50.pth_wb.pt".to_string());
     let wb = nnue_wb.unwrap();
-    let mut nnue: NNUE<{ 2 * 40960 }, 256, 32> = NNUE::new(wb.0, wb.1, wb.2, wb.3, wb.4, wb.5);
-    println!("{:?}",nnue.l_2.weight);
+    let mut nnue: NNUE<128,{ 2 * 40960 }, 256, 32> = NNUE::new(wb.0, wb.1, wb.2, wb.3, wb.4, wb.5);
+    println!("{:?}", nnue.l_2.weight);
     let pos = Board::default();
     let moves_generator = MoveGen::new_legal(&pos);
     let board_status = status(&pos, moves_generator.size_hint().0 > 0, is_insufficient_material(&pos));
@@ -217,7 +217,7 @@ fn test() {
 fn two_kings_update() {
     let nnue_wb = load_state::<{ 2 * 40960 }, 256, 32>(&"resources/halfkp2-cp-50.pth_wb.pt".to_string());
     let wb = nnue_wb.unwrap();
-    let mut nnue: NNUE<{ 2 * 40960 }, 256, 32> = NNUE::new(wb.0, wb.1, wb.2, wb.3, wb.4, wb.5);
+    let mut nnue: NNUE<128,{ 2 * 40960 }, 256, 32> = NNUE::new(wb.0, wb.1, wb.2, wb.3, wb.4, wb.5);
 
     let pos = Board::from_str("4k3/4p3/8/8/8/8/4P3/4K3 w - - 0 1").unwrap();
     let (white_features, black_features) = &HalfKP::board_to_feature_set(&pos);
